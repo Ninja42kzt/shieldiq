@@ -25,6 +25,23 @@ if (user) {
     document.getElementById('user-avatar').textContent = (userData.name || 'U')[0].toUpperCase();
 }
 
+// Load real stats
+async function loadStats() {
+    try {
+        const response = await fetch('/api/quiz/stats', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const stats = await response.json();
+        document.getElementById('modules-done').textContent = stats.modulesDone;
+        document.getElementById('avg-score').textContent = stats.avgScore + '%';
+        document.getElementById('risk-level').textContent = stats.riskLevel;
+    } catch (err) {
+        console.error('Could not load stats');
+    }
+}
+
+loadStats();
+
 function logout() {
     localStorage.removeItem('token');
     localStorage.removeItem('user');

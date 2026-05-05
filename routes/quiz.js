@@ -40,4 +40,29 @@ router.get('/results', auth, (req, res) => {
     }
 });
 
+// Get user stats
+router.get('/stats', auth, (req, res) => {
+    try {
+        const results = db.prepare(
+            'SELECT * FROM quiz_results WHERE user_id = ?'
+        ).all(req.user.id);
+
+        const modulesDone = results.length;
+        const avgScore = modulesDone > 0
+            ? Math.round(results.reduce((sum, r) => sum + r.score, 0) / modulesDone)
+            : 0;
+
+        // Risk level based on average score
+        let riskLevel;
+        if (avgScore >= 80) riskLevel = 'Low';
+        else if (avgScore >= 60) riskLevel = 'Medium';
+        else if (avgScore > 0) riskLevel = 'High';
+        else riskLevel = 'Unknown';
+
+        res.json({ modulesDone, avgScore, riskLevel });
+    } catch (err) {
+        res.status(500).json({ message: 'Error fetching stats' });
+    }
+});
+
 module.exports = router;
