@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShieldIQ - Leaderboard</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body class="dash-body">
+    <aside class="sidebar">
+        <div class="sidebar-logo">🛡️ ShieldIQ</div>
+        <nav class="sidebar-nav">
+            <a href="/dashboard" class="nav-item"><span>📊</span> Dashboard</a>
+            <a href="/quiz" class="nav-item"><span>🎯</span> Training</a>
+            <a href="/progress" class="nav-item"><span>📈</span> My Progress</a>
+            <a href="/leaderboard" class="nav-item active"><span>🏆</span> Leaderboard</a>
+            <a href="/settings" class="nav-item"><span>⚙️</span> Settings</a>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar" id="user-avatar">U</div>
+                <div class="user-details">
+                    <span class="user-name" id="user-name">Loading...</span>
+                    <span class="user-company" id="user-company">Loading...</span>
+                </div>
+            </div>
+            <button class="logout-btn" onclick="logout()">↩ Logout</button>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <header class="dash-header">
+            <div>
+                <h1>Leaderboard 🏆</h1>
+                <p>Top performers across all companies</p>
+            </div>
+        </header>
+
+        <div style="max-width:700px">
+            <!-- Top 3 -->
+            <div style="display:flex; gap:16px; margin-bottom:32px; align-items:flex-end">
+                <div class="podium-card" style="flex:1; text-align:center; padding:24px; background:var(--glass); border:1px solid var(--glass-border); border-radius:16px; order:1">
+                    <div style="font-size:32px">🥈</div>
+                    <div id="p2-name" style="font-weight:700; margin:8px 0">-</div>
+                    <div id="p2-score" style="color:var(--primary); font-size:20px; font-weight:800">-</div>
+                    <div style="color:var(--text-muted); font-size:12px">2nd Place</div>
+                </div>
+                <div class="podium-card" style="flex:1; text-align:center; padding:32px 24px; background:rgba(0,212,255,0.08); border:1px solid rgba(0,212,255,0.3); border-radius:16px; order:0">
+                    <div style="font-size:48px">🥇</div>
+                    <div id="p1-name" style="font-weight:700; margin:8px 0; font-size:18px">-</div>
+                    <div id="p1-score" style="color:var(--primary); font-size:28px; font-weight:800">-</div>
+                    <div style="color:var(--text-muted); font-size:12px">1st Place</div>
+                </div>
+                <div class="podium-card" style="flex:1; text-align:center; padding:24px; background:var(--glass); border:1px solid var(--glass-border); border-radius:16px; order:2">
+                    <div style="font-size:32px">🥉</div>
+                    <div id="p3-name" style="font-weight:700; margin:8px 0">-</div>
+                    <div id="p3-score" style="color:var(--primary); font-size:20px; font-weight:800">-</div>
+                    <div style="color:var(--text-muted); font-size:12px">3rd Place</div>
+                </div>
+            </div>
+
+            <!-- Full Rankings -->
+            <div style="background:var(--glass); border:1px solid var(--glass-border); border-radius:16px; overflow:hidden">
+                <div style="padding:16px 24px; border-bottom:1px solid var(--glass-border); display:flex; justify-content:space-between; font-size:12px; color:var(--text-muted)">
+                    <span>RANK / NAME</span>
+                    <span>AVG SCORE</span>
+                </div>
+                <div id="rankings-list"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const token = localStorage.getItem('token');
+        if (!token) window.location.href = '/login';
+        const userData = JSON.parse(localStorage.getItem('user') || '{}');
+        document.getElementById('user-name').textContent = userData.name || 'User';
+        document.getElementById('user-company').textContent = userData.company || 'Company';
+        document.getElementById('user-avatar').textContent = (userData.name || 'U')[0].toUpperCase();
+
+        async function loadLeaderboard() {
+            try {
+                const res = await fetch('/api/quiz/leaderboard', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+
+                const medals = ['🥇','🥈','🥉'];
+                const podiumIds = ['p1','p2','p3'];
+
+                data.forEach((user, i) => {
+                    if (i < 3) {
+                        document.getElementById(`${podiumIds[i]}-name`).textContent = user.name;
+                        document.getElementById(`${podiumIds[i]}-score`).textContent = user.avg_score + '%';
+                    }
+                });
+
+                const list = document.getElementById('rankings-list');
+                list.innerHTML = data.map((user, i) => `
+                    <div style="padding:16px 24px; display:flex; align-items:center; gap:16px; border-bottom:1px solid var(--glass-border); ${user.name === userData.name ? 'background:rgba(0,212,255,0.05)' : ''}">
+                        <span style="width:28px; font-weight:700; color:${i < 3 ? 'var(--primary)' : 'var(--text-muted)'}; font-size:${i < 3 ? '18px' : '14px'}">${i < 3 ? medals[i] : '#' + (i+1)}</span>
+                        <div style="flex:1">
+                            <div style="font-weight:600; font-size:14px">${user.name} ${user.name === userData.name ? '<span style="color:var(--primary); font-size:11px">(You)</span>' : ''}</div>
+                            <div style="font-size:12px; color:var(--text-muted)">${user.company} · ${user.modules} modules</div>
+                        </div>
+                        <span style="font-weight:800; font-size:18px; color:${user.avg_score >= 80 ? '#34c759' : user.avg_score >= 60 ? '#ff9f0a' : '#ff6b6b'}">${user.avg_score}%</span>
+                    </div>
+                `).join('');
+
+            } catch(err) {
+                document.getElementById('rankings-list').innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-muted)">No rankings yet — complete a module to appear here!</div>';
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = '/login';
+        }
+
+        loadLeaderboard();
+    </script>
+</body>
+</html>

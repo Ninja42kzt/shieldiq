@@ -45,6 +45,14 @@ app.use('/api/quiz', quizRoutes);
 app.get('/progress', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'progress.html'));
 });
+app.get('/leaderboard', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'leaderboard.html'));
+});
+
+app.get('/settings', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'settings.html'));
+});
+
 
 // Start server
 app.listen(PORT, () => {

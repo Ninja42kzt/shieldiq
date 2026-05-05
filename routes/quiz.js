@@ -65,4 +65,23 @@ router.get('/stats', auth, (req, res) => {
     }
 });
 
+// Leaderboard
+router.get('/leaderboard', auth, (req, res) => {
+    try {
+        const rankings = db.prepare(`
+            SELECT u.name, u.company,
+                   ROUND(AVG(q.score)) as avg_score,
+                   COUNT(q.id) as modules
+            FROM users u
+            JOIN quiz_results q ON u.id = q.user_id
+            GROUP BY u.id
+            ORDER BY avg_score DESC
+            LIMIT 20
+        `).all();
+        res.json(rankings);
+    } catch (err) {
+        res.status(500).json({ message: 'Error fetching leaderboard' });
+    }
+});
+
 module.exports = router;
