@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShieldIQ - Training</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/quiz.css">
+</head>
+<body class="dash-body">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-logo">🛡️ ShieldIQ</div>
+        <nav class="sidebar-nav">
+            <a href="/dashboard" class="nav-item">
+                <span>📊</span> Dashboard
+            </a>
+            <a href="/quiz" class="nav-item active">
+                <span>🎯</span> Training
+            </a>
+            <a href="/progress" class="nav-item">
+                <span>📈</span> My Progress
+            </a>
+            <a href="/leaderboard" class="nav-item">
+                <span>🏆</span> Leaderboard
+            </a>
+            <a href="/settings" class="nav-item">
+                <span>⚙️</span> Settings
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar" id="user-avatar">U</div>
+                <div class="user-details">
+                    <span class="user-name" id="user-name">Loading...</span>
+                    <span class="user-company" id="user-company">Loading...</span>
+                </div>
+            </div>
+            <button class="logout-btn" onclick="logout()">↩ Logout</button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+        <!-- Quiz Intro Screen -->
+        <div id="intro-screen">
+            <div class="quiz-intro">
+                <div class="quiz-intro-icon" id="intro-icon">🎣</div>
+                <h1 id="intro-title">Phishing Awareness</h1>
+                <p id="intro-desc">Learn to identify phishing emails and MPESA scams</p>
+                <div class="quiz-meta-info">
+                    <div class="meta-item">
+                        <span class="meta-label">Questions</span>
+                        <span class="meta-value" id="intro-count">10</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Difficulty</span>
+                        <span class="meta-value" id="intro-diff">Beginner</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Time</span>
+                        <span class="meta-value">~5 mins</span>
+                    </div>
+                </div>
+                <button class="btn-primary large" onclick="startQuiz()">
+                    Start Quiz →
+                </button>
+                <a href="/dashboard" class="back-link">← Back to Dashboard</a>
+            </div>
+        </div>
+
+        <!-- Quiz Screen -->
+        <div id="quiz-screen" style="display:none">
+            <div class="quiz-container">
+
+                <!-- Progress Bar -->
+                <div class="quiz-progress">
+                    <div class="progress-info">
+                        <span id="category-label">Phishing Awareness</span>
+                        <span id="question-counter">Question 1 of 10</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill"></div>
+                    </div>
+                </div>
+
+                <!-- Question -->
+                <div class="question-card">
+                    <div class="question-number" id="q-number">01</div>
+                    <h2 class="question-text" id="question-text">Loading question...</h2>
+
+                    <!-- Options -->
+                    <div class="options-grid" id="options-grid">
+                    </div>
+
+                    <!-- Feedback -->
+                    <div id="feedback" class="feedback" style="display:none">
+                        <div class="feedback-icon" id="feedback-icon"></div>
+                        <div class="feedback-text">
+                            <strong id="feedback-title"></strong>
+                            <p id="feedback-explanation"></p>
+                        </div>
+                    </div>
+
+                    <!-- Next Button -->
+                    <button class="btn-primary large next-btn" id="next-btn" onclick="nextQuestion()" style="display:none">
+                        Next Question →
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Screen -->
+        <div id="results-screen" style="display:none">
+            <div class="results-container">
+                <div class="results-icon" id="results-icon">🎉</div>
+                <h1 id="results-title">Quiz Complete!</h1>
+                <div class="score-display">
+                    <span class="score-number" id="final-score">0</span>
+                    <span class="score-label">/ 10</span>
+                </div>
+                <div class="score-percentage" id="score-percentage">0%</div>
+
+                <div class="results-breakdown" id="results-breakdown"></div>
+
+                <div class="ai-recommendation" id="ai-recommendation">
+                    <div class="ai-icon">🤖</div>
+                    <div class="ai-text">
+                        <strong>AI Recommendation</strong>
+                        <p id="ai-text">Analyzing your results...</p>
+                    </div>
+                </div>
+
+                <div class="results-actions">
+                    <button class="btn-primary large" onclick="window.location.href='/dashboard'">
+                        Back to Dashboard
+                    </button>
+                    <button class="btn-outline large" onclick="retakeQuiz()">
+                        Retake Quiz
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script src="js/questions.js"></script>
+    <script src="js/quiz.js"></script>
+</body>
+</html>

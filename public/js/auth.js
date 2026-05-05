@@ -28,6 +28,7 @@ async function handleLogin() {
 
         if (response.ok) {
             localStorage.setItem('token', data.token);
+            localStorage.setItem('user', JSON.stringify(data.user));
             successMsg.textContent = 'Login successful! Redirecting...';
             successMsg.style.display = 'block';
             errorMsg.style.display = 'none';
@@ -81,12 +82,12 @@ async function handleRegister() {
         });
 
         const data = await response.json();
+if (response.ok) {
+    successMsg.textContent = 'Account created! Redirecting to login...';
+    successMsg.style.display = 'block';
+    errorMsg.style.display = 'none';
+    setTimeout(() => window.location.href = '/login', 1500);
 
-        if (response.ok) {
-            successMsg.textContent = 'Account created! Redirecting to login...';
-            successMsg.style.display = 'block';
-            errorMsg.style.display = 'none';
-            setTimeout(() => window.location.href = '/login', 1500);
         } else {
             errorMsg.textContent = data.message || 'Registration failed';
             errorMsg.style.display = 'block';

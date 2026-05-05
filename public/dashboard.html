@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShieldIQ - Dashboard</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body class="dash-body">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-logo">🛡️ ShieldIQ</div>
+        <nav class="sidebar-nav">
+            <a href="/dashboard" class="nav-item active">
+                <span>📊</span> Dashboard
+            </a>
+            <a href="/quiz" class="nav-item">
+                <span>🎯</span> Training
+            </a>
+            <a href="/progress" class="nav-item">
+                <span>📈</span> My Progress
+            </a>
+            <a href="/leaderboard" class="nav-item">
+                <span>🏆</span> Leaderboard
+            </a>
+            <a href="/settings" class="nav-item">
+                <span>⚙️</span> Settings
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar" id="user-avatar">U</div>
+                <div class="user-details">
+                    <span class="user-name" id="user-name">Loading...</span>
+                    <span class="user-company" id="user-company">Loading...</span>
+                </div>
+            </div>
+            <button class="logout-btn" onclick="logout()">↩ Logout</button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+        <!-- Header -->
+        <header class="dash-header">
+            <div>
+                <h1>Welcome back, <span id="welcome-name">User</span> 👋</h1>
+                <p>Here's your cybersecurity training overview</p>
+            </div>
+            <div class="header-actions">
+                <button class="btn-primary" onclick="window.location.href='/quiz'">
+                    Start Training →
+                </button>
+            </div>
+        </header>
+
+        <!-- Stats Cards -->
+        <section class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">🎯</div>
+                <div class="stat-info">
+                    <span class="stat-value" id="modules-done">0</span>
+                    <span class="stat-label">Modules Completed</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">⭐</div>
+                <div class="stat-info">
+                    <span class="stat-value" id="avg-score">0%</span>
+                    <span class="stat-label">Average Score</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🔥</div>
+                <div class="stat-info">
+                    <span class="stat-value" id="streak">0</span>
+                    <span class="stat-label">Day Streak</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🛡️</div>
+                <div class="stat-info">
+                    <span class="stat-value" id="risk-level">Low</span>
+                    <span class="stat-label">Risk Level</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Training Modules -->
+        <section class="modules-section">
+            <h2>Training Modules</h2>
+            <div class="modules-grid">
+                <div class="module-card" onclick="window.location.href='/quiz?cat=phishing'">
+                    <div class="module-icon">🎣</div>
+                    <div class="module-info">
+                        <h3>Phishing Awareness</h3>
+                        <p>Learn to identify phishing emails and MPESA scams</p>
+                        <div class="module-meta">
+                            <span class="difficulty easy">Beginner</span>
+                            <span>10 questions</span>
+                        </div>
+                    </div>
+                    <div class="module-arrow">→</div>
+                </div>
+                <div class="module-card" onclick="window.location.href='/quiz?cat=passwords'">
+                    <div class="module-icon">🔑</div>
+                    <div class="module-info">
+                        <h3>Password Security</h3>
+                        <p>Best practices for creating and managing passwords</p>
+                        <div class="module-meta">
+                            <span class="difficulty easy">Beginner</span>
+                            <span>8 questions</span>
+                        </div>
+                    </div>
+                    <div class="module-arrow">→</div>
+                </div>
+                <div class="module-card" onclick="window.location.href='/quiz?cat=social'">
+                    <div class="module-icon">🧠</div>
+                    <div class="module-info">
+                        <h3>Social Engineering</h3>
+                        <p>Recognize manipulation tactics used by attackers</p>
+                        <div class="module-meta">
+                            <span class="difficulty medium">Intermediate</span>
+                            <span>12 questions</span>
+                        </div>
+                    </div>
+                    <div class="module-arrow">→</div>
+                </div>
+                <div class="module-card" onclick="window.location.href='/quiz?cat=devices'">
+                    <div class="module-icon">💻</div>
+                    <div class="module-info">
+                        <h3>Device Security</h3>
+                        <p>Keeping your work devices and data safe</p>
+                        <div class="module-meta">
+                            <span class="difficulty medium">Intermediate</span>
+                            <span>10 questions</span>
+                        </div>
+                    </div>
+                    <div class="module-arrow">→</div>
+                </div>
+                <div class="module-card" onclick="window.location.href='/quiz?cat=data'">
+                    <div class="module-icon">🗄️</div>
+                    <div class="module-info">
+                        <h3>Data Protection</h3>
+                        <p>Handling sensitive company and customer data</p>
+                        <div class="module-meta">
+                            <span class="difficulty hard">Advanced</span>
+                            <span>15 questions</span>
+                        </div>
+                    </div>
+                    <div class="module-arrow">→</div>
+                </div>
+                <div class="module-card" onclick="window.location.href='/quiz?cat=incident'">
+                    <div class="module-icon">🚨</div>
+                    <div class="module-info">
+                        <h3>Incident Response</h3>
+                        <p>What to do when a security incident occurs</p>
+                        <div class="module-meta">
+                            <span class="difficulty hard">Advanced</span>
+                            <span>12 questions</span>
+                        </div>
+                    </div>
+                    <div class="module-arrow">→</div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script src="js/dashboard.js"></script>
+</body>
+</html>
