@@ -42,6 +42,10 @@ app.get('/quiz', (req, res) => {
 const quizRoutes = require('./routes/quiz');
 app.use('/api/quiz', quizRoutes);
 
+app.get('/progress', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'progress.html'));
+});
+
 // Start server
 app.listen(PORT, () => {
     console.log(`ShieldIQ running on http://localhost:${PORT}`);

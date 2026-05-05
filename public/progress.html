@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShieldIQ - My Progress</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/progress.css">
+</head>
+<body class="dash-body">
+
+    <aside class="sidebar">
+        <div class="sidebar-logo">🛡️ ShieldIQ</div>
+        <nav class="sidebar-nav">
+            <a href="/dashboard" class="nav-item">
+                <span>📊</span> Dashboard
+            </a>
+            <a href="/quiz" class="nav-item">
+                <span>🎯</span> Training
+            </a>
+            <a href="/progress" class="nav-item active">
+                <span>📈</span> My Progress
+            </a>
+            <a href="/leaderboard" class="nav-item">
+                <span>🏆</span> Leaderboard
+            </a>
+            <a href="/settings" class="nav-item">
+                <span>⚙️</span> Settings
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar" id="user-avatar">U</div>
+                <div class="user-details">
+                    <span class="user-name" id="user-name">Loading...</span>
+                    <span class="user-company" id="user-company">Loading...</span>
+                </div>
+            </div>
+            <button class="logout-btn" onclick="logout()">↩ Logout</button>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <header class="dash-header">
+            <div>
+                <h1>My Progress 📈</h1>
+                <p>Track your cybersecurity training journey</p>
+            </div>
+            <button class="btn-primary" onclick="window.location.href='/quiz'">
+                Continue Training →
+            </button>
+        </header>
+
+        <!-- Overall Stats -->
+        <section class="stats-grid" style="margin-bottom:32px">
+            <div class="stat-card">
+                <div class="stat-icon">🎯</div>
+                <div class="stat-info">
+                    <span class="stat-value" id="total-modules">0</span>
+                    <span class="stat-label">Modules Completed</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">⭐</div>
+                <div class="stat-info">
+                    <span class="stat-value" id="avg-score">0%</span>
+                    <span class="stat-label">Average Score</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🏆</div>
+                <div class="stat-info">
+                    <span class="stat-value" id="best-score">0%</span>
+                    <span class="stat-label">Best Score</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🛡️</div>
+                <div class="stat-info">
+                    <span class="stat-value" id="risk-level">-</span>
+                    <span class="stat-label">Risk Level</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Category Progress -->
+        <section class="progress-section">
+            <h2>Category Breakdown</h2>
+            <div class="category-grid" id="category-grid">
+                <!-- Populated by JS -->
+            </div>
+        </section>
+
+        <!-- Recent Activity -->
+        <section class="progress-section">
+            <h2>Recent Activity</h2>
+            <div class="activity-list" id="activity-list">
+                <div class="empty-state">
+                    <span>📭</span>
+                    <p>No activity yet — start a module to see your history</p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script src="js/progress.js"></script>
+</body>
+</html>
