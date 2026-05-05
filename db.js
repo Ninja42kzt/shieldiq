@@ -1,7 +1,11 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 
-const db = new Database(path.join(__dirname, 'shieldiq.db'));
+const dbPath = process.env.NODE_ENV === 'production'
+    ? '/data/shieldiq.db'
+    : path.join(__dirname, 'shieldiq.db');
+
+const db = new Database(dbPath);
 
 db.exec(`
     CREATE TABLE IF NOT EXISTS users (
@@ -32,5 +36,5 @@ db.exec(`
     );
 `);
 
-console.log('Database initialized');
+console.log('Database initialized at:', dbPath);
 module.exports = db;
