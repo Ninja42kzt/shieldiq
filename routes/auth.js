@@ -286,5 +286,15 @@ router.post('/disable-2fa', async (req, res) => {
         res.status(500).json({ message: 'Server error' });
     }
 });
+
+// TEMP — manual verify (remove after testing)
+router.get('/force-verify/:email', (req, res) => {
+    try {
+        db.prepare('UPDATE users SET verified = 1 WHERE email = ?').run(req.params.email);
+        res.json({ message: 'Verified' });
+    } catch(e) {
+        res.status(500).json({ message: e.message });
+    }
+});
  
 module.exports = router;
