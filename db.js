@@ -3,7 +3,7 @@ const Database = require('better-sqlite3');
 const path = require('path');
  
 const dbPath = process.env.NODE_ENV === 'production'
-    ? '/data/shieldiq.db'
+    ? path.join('/tmp', 'shieldiq.db')  // Use /tmp on Render free tier
     : path.join(__dirname, 'shieldiq.db');
  
 const db = new Database(dbPath);
