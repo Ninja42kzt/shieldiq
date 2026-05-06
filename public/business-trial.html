@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShieldIQ - Start Business Trial</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/auth.css">
+    <link rel="stylesheet" href="css/trial.css">
+</head>
+<body class="auth-body">
+    <div class="auth-bg"></div>
+
+    <nav>
+        <div class="logo">🛡️ ShieldIQ</div>
+        <div class="nav-links">
+            <a href="/pricing">← Back to Pricing</a>
+        </div>
+    </nav>
+
+    <div class="trial-container">
+
+        <!-- Left — Plan Summary -->
+        <div class="trial-summary">
+            <div class="trial-plan-badge">🏢 Business Plan</div>
+            <h2>7-Day Free Trial</h2>
+            <p class="trial-subtitle">Full Business access. Cancel anytime. No charge today.</p>
+
+            <div class="trial-features">
+                <div class="trial-feature">✅ All 6 training modules</div>
+                <div class="trial-feature">🤖 AI-powered recommendations</div>
+                <div class="trial-feature">🎯 Weak area analysis per user</div>
+                <div class="trial-feature">🔧 Admin dashboard access</div>
+                <div class="trial-feature">📊 Team risk dashboard</div>
+                <div class="trial-feature">🚨 High-risk user alerts</div>
+                <div class="trial-feature">👥 Up to 10 team members</div>
+                <div class="trial-feature">📧 Priority support</div>
+            </div>
+
+            <div class="trial-timeline">
+                <div class="timeline-item active">
+                    <div class="timeline-dot"></div>
+                    <div>
+                        <strong>Today</strong>
+                        <span>Trial starts — $0 charged</span>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-dot"></div>
+                    <div>
+                        <strong>Day 6</strong>
+                        <span>Reminder email sent</span>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-dot"></div>
+                    <div>
+                        <strong>Day 7</strong>
+                        <span>$8/user/mo begins or cancel free</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="trial-price-note">
+                After trial: <strong>$8/user/month</strong> · Max $80/mo for 10 users
+            </div>
+        </div>
+
+        <!-- Right — Payment Form -->
+        <div class="trial-form-side">
+            <div class="auth-card" style="max-width:100%">
+
+                <!-- Step indicator -->
+                <div class="step-indicator">
+                    <div class="step active" id="step1-dot">1</div>
+                    <div class="step-line"></div>
+                    <div class="step" id="step2-dot">2</div>
+                    <div class="step-line"></div>
+                    <div class="step" id="step3-dot">✓</div>
+                </div>
+
+                <!-- Step 1: Account -->
+                <div id="step1">
+                    <div class="auth-header">
+                        <div class="auth-icon">👤</div>
+                        <h1>Your Account</h1>
+                        <p>Enter your details to get started</p>
+                    </div>
+                    <div id="step1-error" class="alert alert-error" style="display:none"></div>
+                    <div class="auth-form">
+                        <div class="form-group">
+                            <label>Full Name</label>
+                            <input type="text" id="trial-name" placeholder="John Doe"/>
+                        </div>
+                        <div class="form-group">
+                            <label>Company Name</label>
+                            <input type="text" id="trial-company" placeholder="Acme Ltd"/>
+                        </div>
+                        <div class="form-group">
+                            <label>Work Email</label>
+                            <input type="email" id="trial-email" placeholder="you@company.com"/>
+                        </div>
+                        <div class="form-group">
+                            <label>Password</label>
+                            <div class="input-wrapper">
+                                <input type="password" id="trial-password" placeholder="Min 8 characters"/>
+                                <span class="toggle-pass" onclick="toggleTrialPass()">👁️</span>
+                            </div>
+                        </div>
+                        <button class="btn-primary full" onclick="goToStep2()">Continue to Payment →</button>
+                    </div>
+                </div>
+
+                <!-- Step 2: Payment -->
+                <div id="step2" style="display:none">
+                    <div class="auth-header">
+                        <div class="auth-icon">💳</div>
+                        <h1>Payment Details</h1>
+                        <p>Card used for verification only — <strong style="color:var(--primary)">$0 charged today</strong></p>
+                    </div>
+                    <div id="step2-error" class="alert alert-error" style="display:none"></div>
+
+                    <div class="secure-badge">
+                        🔒 256-bit SSL encrypted · PCI DSS compliant
+                    </div>
+
+                    <div class="auth-form">
+                        <div class="form-group">
+                            <label>Cardholder Name</label>
+                            <input type="text" id="card-name" placeholder="Name on card"/>
+                        </div>
+                        <div class="form-group">
+                            <label>Card Number</label>
+                            <div class="card-input-wrapper">
+                                <input type="text" id="card-number" placeholder="1234 5678 9012 3456" maxlength="19" oninput="formatCard(this)"/>
+                                <div class="card-icons">
+                                    <span id="card-type-icon">💳</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Expiry Date</label>
+                                <input type="text" id="card-expiry" placeholder="MM/YY" maxlength="5" oninput="formatExpiry(this)"/>
+                            </div>
+                            <div class="form-group">
+                                <label>CVV</label>
+                                <input type="text" id="card-cvv" placeholder="123" maxlength="4"/>
+                            </div>
+                        </div>
+
+                        <div class="trial-notice">
+                            <span>ℹ️</span>
+                            <span>We verify your card is real by placing a $1 hold that is automatically released within 2 minutes. This confirms you are a real person. <strong>You will not be charged.</strong></span>
+                        </div>
+
+                        <div class="form-group" style="margin-top:8px">
+                            <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer">
+                                <input type="checkbox" id="trial-agree" style="margin-top:3px;flex-shrink:0"/>
+                                <span style="font-size:12px;color:var(--text-muted)">I agree to the <a href="#" style="color:var(--primary)">Terms of Service</a> and understand my trial ends after 7 days. I can cancel anytime before then.</span>
+                            </label>
+                        </div>
+
+                        <button class="btn-primary full" onclick="startTrial()">
+                            🚀 Start My Free Trial
+                        </button>
+                        <button class="btn-outline" style="width:100%;margin-top:8px;cursor:pointer" onclick="goToStep1()">← Back</button>
+                    </div>
+                </div>
+
+                <!-- Step 3: Success -->
+                <div id="step3" style="display:none;text-align:center">
+                    <div style="font-size:72px;margin-bottom:16px">🎉</div>
+                    <h1 style="font-size:28px;font-weight:700;margin-bottom:12px">Trial Activated!</h1>
+                    <p style="color:var(--text-muted);margin-bottom:24px">Welcome to ShieldIQ Business. Your 7-day trial has started — no charge made.</p>
+
+                    <div style="background:rgba(0,212,255,0.08);border:1px solid rgba(0,212,255,0.2);border-radius:12px;padding:20px;margin-bottom:28px;text-align:left">
+                        <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px">TRIAL DETAILS</div>
+                        <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+                            <span style="font-size:14px">Plan</span>
+                            <span style="font-size:14px;font-weight:600;color:var(--primary)">Business (Trial)</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+                            <span style="font-size:14px">Expires</span>
+                            <span style="font-size:14px;font-weight:600" id="trial-expiry-date">-</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between">
+                            <span style="font-size:14px">Charged today</span>
+                            <span style="font-size:14px;font-weight:600;color:#34c759">$0.00</span>
+                        </div>
+                    </div>
+
+                    <button class="btn-primary full" style="border:none;cursor:pointer" onclick="window.location.href='/dashboard'">
+                        Go to Dashboard →
+                    </button>
+                    <p style="font-size:12px;color:var(--text-muted);margin-top:12px">A confirmation email has been sent to your inbox</p>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let trialData = {};
+
+        function toggleTrialPass() {
+            const p = document.getElementById('trial-password');
+            p.type = p.type === 'password' ? 'text' : 'password';
+        }
+
+        function formatCard(input) {
+            let val = input.value.replace(/\D/g, '').substring(0, 16);
+            input.value = val.match(/.{1,4}/g)?.join(' ') || val;
+            const icon = document.getElementById('card-type-icon');
+            if (val.startsWith('4')) icon.textContent = '💙';
+            else if (val.startsWith('5')) icon.textContent = '🔴';
+            else if (val.startsWith('3')) icon.textContent = '🟢';
+            else icon.textContent = '💳';
+        }
+
+        function formatExpiry(input) {
+            let val = input.value.replace(/\D/g, '');
+            if (val.length >= 2) val = val.substring(0,2) + '/' + val.substring(2,4);
+            input.value = val;
+        }
+
+        function goToStep1() {
+            document.getElementById('step1').style.display = 'block';
+            document.getElementById('step2').style.display = 'none';
+            document.getElementById('step1-dot').classList.add('active');
+            document.getElementById('step2-dot').classList.remove('active');
+        }
+
+        function goToStep2() {
+            const name = document.getElementById('trial-name').value;
+            const company = document.getElementById('trial-company').value;
+            const email = document.getElementById('trial-email').value;
+            const password = document.getElementById('trial-password').value;
+            const err = document.getElementById('step1-error');
+
+            if (!name || !company || !email || !password) {
+                err.textContent = 'Please fill in all fields';
+                err.style.display = 'block'; return;
+            }
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                err.textContent = 'Please enter a valid email address';
+                err.style.display = 'block'; return;
+            }
+            if (password.length < 8) {
+                err.textContent = 'Password must be at least 8 characters';
+                err.style.display = 'block'; return;
+            }
+
+            trialData = { name, company, email, password };
+            err.style.display = 'none';
+            document.getElementById('step1').style.display = 'none';
+            document.getElementById('step2').style.display = 'block';
+            document.getElementById('step2-dot').classList.add('active');
+            document.getElementById('card-name').value = name;
+        }
+
+        async function startTrial() {
+            const cardName = document.getElementById('card-name').value;
+            const cardNumber = document.getElementById('card-number').value.replace(/\s/g, '');
+            const cardExpiry = document.getElementById('card-expiry').value;
+            const cardCvv = document.getElementById('card-cvv').value;
+            const agreed = document.getElementById('trial-agree').checked;
+            const err = document.getElementById('step2-error');
+
+            if (!cardName || !cardNumber || !cardExpiry || !cardCvv) {
+                err.textContent = 'Please fill in all payment fields';
+                err.style.display = 'block'; return;
+            }
+            if (cardNumber.length < 16) {
+                err.textContent = 'Please enter a valid 16-digit card number';
+                err.style.display = 'block'; return;
+            }
+            if (!agreed) {
+                err.textContent = 'Please agree to the Terms of Service to continue';
+                err.style.display = 'block'; return;
+            }
+
+            err.style.display = 'none';
+            const btn = document.querySelector('#step2 .btn-primary.full');
+            btn.textContent = '🔄 Verifying card...';
+            btn.disabled = true;
+
+            // Simulate $1 hold verification (2 seconds)
+            await new Promise(r => setTimeout(r, 2000));
+            btn.textContent = '✅ Card verified! Creating account...';
+
+            try {
+                // Register account
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ...trialData, plan: 'business_trial' })
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Set trial expiry
+                    const expiry = new Date();
+                    expiry.setDate(expiry.getDate() + 7);
+                    localStorage.setItem('trial_plan', 'business');
+                    localStorage.setItem('trial_expiry', expiry.toISOString());
+
+                    // Show success
+                    document.getElementById('step2').style.display = 'none';
+                    document.getElementById('step3').style.display = 'block';
+                    document.getElementById('step3-dot').classList.add('active');
+                    document.getElementById('trial-expiry-date').textContent = expiry.toLocaleDateString('en-KE', { day:'numeric', month:'long', year:'numeric' });
+
+                    // Redirect to verify email
+                    setTimeout(() => {
+                        window.location.href = `/verify?email=${encodeURIComponent(trialData.email)}&redirect=/dashboard`;
+                    }, 3000);
+                } else {
+                    btn.textContent = '🚀 Start My Free Trial';
+                    btn.disabled = false;
+                    err.textContent = data.message || 'Registration failed';
+                    err.style.display = 'block';
+                }
+            } catch(e) {
+                btn.textContent = '🚀 Start My Free Trial';
+                btn.disabled = false;
+                err.textContent = 'Server error. Please try again.';
+                err.style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html>

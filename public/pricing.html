@@ -4,406 +4,325 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pricing - ShieldIQ</title>
+    <meta name="description" content="Simple, transparent pricing for cybersecurity awareness training. Free, Business, and Enterprise plans.">
     <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/pricing.css">
+    <style>
+        .pricing-hero {
+            padding: 140px 60px 80px;
+            text-align: center;
+        }
+        .pricing-hero h1 {
+            font-size: 52px;
+            font-weight: 800;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, #fff 0%, var(--primary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .pricing-hero p {
+            font-size: 18px;
+            color: var(--text-muted);
+            max-width: 540px;
+            margin: 0 auto 48px;
+            line-height: 1.7;
+        }
+        .plans-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 60px 100px;
+            align-items: start;
+        }
+        .plan-card {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 36px 28px;
+            transition: all 0.3s;
+            position: relative;
+        }
+        .plan-card:hover { transform: translateY(-4px); }
+        .plan-card.popular {
+            border-color: var(--primary);
+            background: rgba(0,212,255,0.04);
+        }
+        .plan-card.enterprise-plan {
+            border-color: rgba(191,90,242,0.3);
+            background: rgba(191,90,242,0.04);
+        }
+        .popular-badge {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--primary);
+            color: #000;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 16px;
+            border-radius: 20px;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+        .plan-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+        .plan-price {
+            font-size: 48px;
+            font-weight: 800;
+            color: var(--text);
+            margin-bottom: 4px;
+            line-height: 1;
+        }
+        .plan-price span {
+            font-size: 16px;
+            font-weight: 400;
+            color: var(--text-muted);
+        }
+        .plan-desc {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin: 12px 0 24px;
+            line-height: 1.5;
+        }
+        .plan-btn {
+            display: block;
+            width: 100%;
+            padding: 13px;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 14px;
+            text-decoration: none;
+            margin-bottom: 28px;
+            transition: all 0.3s;
+            cursor: pointer;
+            border: none;
+        }
+        .plan-btn-primary {
+            background: var(--primary);
+            color: #000;
+        }
+        .plan-btn-primary:hover { background: var(--primary-dark); }
+        .plan-btn-outline {
+            background: transparent;
+            border: 1px solid var(--glass-border);
+            color: var(--text);
+        }
+        .plan-btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+        .plan-btn-enterprise {
+            background: #bf5af2;
+            color: #fff;
+        }
+        .plan-btn-enterprise:hover { background: #a040d0; }
+        .plan-features {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .plan-feature {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            font-size: 14px;
+            color: var(--text);
+            line-height: 1.4;
+        }
+        .plan-feature .check { color: #34c759; flex-shrink: 0; font-size: 15px; }
+        .plan-feature .cross { color: var(--text-muted); flex-shrink: 0; }
+        .plan-feature.muted { color: var(--text-muted); }
+        .plan-divider {
+            border: none;
+            border-top: 1px solid var(--glass-border);
+            margin: 20px 0;
+        }
+        .faq-section {
+            padding: 80px 60px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .faq-section h2 {
+            font-size: 32px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .faq-item {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 12px;
+            cursor: pointer;
+        }
+        .faq-q {
+            font-size: 15px;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+        .faq-a {
+            font-size: 14px;
+            color: var(--text-muted);
+            line-height: 1.6;
+            margin-top: 12px;
+            display: none;
+        }
+        .faq-a.open { display: block; }
+
+        @media (max-width: 900px) {
+            .plans-grid { grid-template-columns: 1fr; padding: 0 20px 60px; gap: 20px; }
+            .pricing-hero { padding: 100px 20px 48px; }
+            .pricing-hero h1 { font-size: 36px; }
+            .faq-section { padding: 60px 20px; }
+        }
+        @media (max-width: 480px) {
+            .pricing-hero h1 { font-size: 28px; }
+            .plan-price { font-size: 40px; }
+            .plan-card { padding: 28px 20px; }
+        }
+    </style>
 </head>
 <body>
-    <div class="auth-bg"></div>
-
     <nav>
         <div class="logo">🛡️ ShieldIQ</div>
-        <div class="nav-links">
+        <button class="nav-toggle" onclick="toggleNav()" aria-label="Menu">
+            <span></span><span></span><span></span>
+        </button>
+        <div class="nav-links" id="nav-links">
             <a href="/">Home</a>
-            <a href="/dashboard">Dashboard</a>
-            <a href="/login" class="btn-outline">Login</a>
+            <a href="/pricing">Pricing</a>
+            <a href="/login">Login</a>
             <a href="/register" class="btn-primary">Get Started</a>
         </div>
     </nav>
 
-    <!-- Dynamic Offer Banner -->
-    <div id="offer-banner" style="display:none">
-        <div class="offer-banner-inner">
-            <span id="offer-icon">🎉</span>
-            <span id="offer-text">Special offer loading...</span>
-            <span class="offer-badge" id="offer-badge">20% OFF</span>
-            <button class="offer-close" onclick="document.getElementById('offer-banner').style.display='none'">✕</button>
-        </div>
+    <div class="pricing-hero">
+        <div class="badge">💰 Simple Pricing</div>
+        <h1>Choose Your Plan</h1>
+        <p>Start free, upgrade when your team is ready. All plans include core cybersecurity training.</p>
     </div>
 
-    <div class="pricing-page">
+    <div class="plans-grid">
 
-        <!-- Header -->
-        <div class="pricing-header">
-            <span class="badge">Simple, Transparent Pricing</span>
-            <h1>Protect Your Team.<br>Choose Your Plan.</h1>
-            <p>Start free. Upgrade when your team is ready for AI-powered security training.</p>
-
-            <!-- Billing Toggle -->
-            <div class="billing-toggle">
-                <span class="toggle-label" id="monthly-label" style="color:var(--primary)">Monthly</span>
-                <div class="toggle-switch" onclick="toggleBilling()" id="billing-switch">
-                    <div class="toggle-knob" id="toggle-knob"></div>
-                </div>
-                <span class="toggle-label" id="yearly-label">
-                    Yearly
-                    <span class="save-badge">Save 20%</span>
-                </span>
+        <!-- FREE -->
+        <div class="plan-card">
+            <div class="plan-name">Free</div>
+            <div class="plan-price">$0 <span>/ forever</span></div>
+            <p class="plan-desc">Perfect for individuals getting started with cybersecurity awareness.</p>
+            <a href="/register" class="plan-btn plan-btn-outline">Get Started Free</a>
+            <div class="plan-features">
+                <div class="plan-feature"><span class="check">✓</span> 3 training modules</div>
+                <div class="plan-feature"><span class="check">✓</span> Basic quiz & scoring</div>
+                <div class="plan-feature"><span class="check">✓</span> Personal progress tracking</div>
+                <div class="plan-feature"><span class="check">✓</span> Leaderboard access</div>
+                <div class="plan-feature"><span class="check">✓</span> Email MFA</div>
+                <hr class="plan-divider">
+                <div class="plan-feature muted"><span class="cross">✗</span> AI recommendations</div>
+                <div class="plan-feature muted"><span class="cross">✗</span> Admin dashboard</div>
+                <div class="plan-feature muted"><span class="cross">✗</span> Team management</div>
+                <div class="plan-feature muted"><span class="cross">✗</span> Weak area analysis</div>
             </div>
         </div>
 
-        <!-- Pricing Cards -->
-        <div class="pricing-grid three-col">
-
-            <!-- Free Plan -->
-            <div class="pricing-card">
-                <div class="plan-icon">🆓</div>
-                <div class="plan-name">Free</div>
-                <div class="plan-price">
-                    <span class="price-amount">$0</span>
-                    <span class="price-period">/ forever</span>
-                </div>
-                <p class="plan-desc">Perfect for individuals getting started with cybersecurity awareness</p>
-                <div class="plan-limit">👤 1 user</div>
-                <ul class="plan-features">
-                    <li class="feature included">✅ 3 training modules</li>
-                    <li class="feature included">✅ Score tracking</li>
-                    <li class="feature included">✅ Basic progress reports</li>
-                    <li class="feature included">✅ Community leaderboard</li>
-                    <li class="feature included">✅ Email MFA protection</li>
-                    <li class="feature excluded">❌ AI recommendations</li>
-                    <li class="feature excluded">❌ Weak area analysis</li>
-                    <li class="feature excluded">❌ Admin dashboard</li>
-                    <li class="feature excluded">❌ Team risk reports</li>
-                    <li class="feature excluded">❌ Priority support</li>
-                </ul>
-                <button class="plan-btn free" onclick="selectPlan('free')">Get Started Free</button>
-            </div>
-
-            <!-- Business Plan -->
-            <div class="pricing-card business">
-                <div class="plan-badge-top">Most Popular</div>
-                <div class="plan-icon">🏢</div>
-                <div class="plan-name">Business</div>
-                <div class="plan-price">
-                    <span class="price-amount" id="business-price">$8</span>
-                    <span class="price-period">/ user / month</span>
-                </div>
-                <div class="yearly-note" id="business-yearly-note" style="display:none">
-                    <span>$6.40/user/mo billed annually</span>
-                </div>
-                <p class="plan-desc">For teams that take security seriously — AI-powered training for up to 10 users</p>
-                <div class="plan-limit">👥 Up to 10 users</div>
-                <ul class="plan-features">
-                    <li class="feature included">✅ Everything in Free</li>
-                    <li class="feature included">✅ All 6 training modules</li>
-                    <li class="feature included pro-feature">🤖 AI recommendations</li>
-                    <li class="feature included pro-feature">🎯 Weak area analysis</li>
-                    <li class="feature included pro-feature">🔧 Admin dashboard</li>
-                    <li class="feature included pro-feature">📊 Team risk dashboard</li>
-                    <li class="feature included pro-feature">📈 Advanced analytics</li>
-                    <li class="feature included pro-feature">🚨 High-risk user alerts</li>
-                    <li class="feature included">✅ Weekly team reports</li>
-                    <li class="feature included">✅ Priority email support</li>
-                </ul>
-                <button class="plan-btn business-btn" onclick="selectPlan('business')">Upgrade to Business →</button>
-                <div class="plan-total" id="business-total">Max $80/mo for 10 users</div>
-            </div>
-
-            <!-- Enterprise Plan -->
-            <div class="pricing-card enterprise">
-                <div class="plan-icon">🏛️</div>
-                <div class="plan-name">Enterprise</div>
-                <div class="plan-price">
-                    <span class="price-amount" id="enterprise-price">$15</span>
-                    <span class="price-period">/ user / month</span>
-                </div>
-                <div class="yearly-note" id="enterprise-yearly-note" style="display:none">
-                    <span>$12/user/mo billed annually</span>
-                </div>
-                <p class="plan-desc">For organizations requiring maximum security coverage and custom training</p>
-                <div class="plan-limit">🏛️ Up to 30 users</div>
-                <ul class="plan-features">
-                    <li class="feature included">✅ Everything in Business</li>
-                    <li class="feature included enterprise-feature">⚡ Custom training modules</li>
-                    <li class="feature included enterprise-feature">🔗 API access</li>
-                    <li class="feature included enterprise-feature">🎨 White-label option</li>
-                    <li class="feature included enterprise-feature">👤 Dedicated account manager</li>
-                    <li class="feature included enterprise-feature">📋 SLA guarantee</li>
-                    <li class="feature included enterprise-feature">🏢 Multi-department support</li>
-                    <li class="feature included enterprise-feature">📞 Phone & email support</li>
-                    <li class="feature included">✅ Custom reporting</li>
-                    <li class="feature included">✅ Compliance documentation</li>
-                </ul>
-                <button class="plan-btn enterprise-btn" onclick="selectPlan('enterprise')">Get Enterprise →</button>
-                <div class="plan-total" id="enterprise-total">Max $450/mo for 30 users</div>
-            </div>
-
-        </div>
-
-        <!-- Comparison Note -->
-        <div class="comparison-note">
-            <div class="comp-item">
-                <span class="comp-icon">💳</span>
-                <span>No credit card required for Free</span>
-            </div>
-            <div class="comp-divider"></div>
-            <div class="comp-item">
-                <span class="comp-icon">🔄</span>
-                <span>Cancel anytime, no lock-in</span>
-            </div>
-            <div class="comp-divider"></div>
-            <div class="comp-item">
-                <span class="comp-icon">📧</span>
-                <span>Invoices available for all paid plans</span>
+        <!-- BUSINESS -->
+        <div class="plan-card popular">
+            <div class="popular-badge">⭐ MOST POPULAR</div>
+            <div class="plan-name">Business</div>
+            <div class="plan-price">$8 <span>/ user / mo</span></div>
+            <p class="plan-desc">For IT teams managing cybersecurity awareness across the organization.</p>
+            <a href="/business-trial" class="plan-btn plan-btn-primary">Start 7-Day Free Trial</a>
+            <div class="plan-features">
+                <div class="plan-feature"><span class="check">✓</span> All 6 training modules</div>
+                <div class="plan-feature"><span class="check">✓</span> 🤖 AI-powered recommendations</div>
+                <div class="plan-feature"><span class="check">✓</span> Admin dashboard</div>
+                <div class="plan-feature"><span class="check">✓</span> Team risk dashboard</div>
+                <div class="plan-feature"><span class="check">✓</span> Weak area analysis per user</div>
+                <div class="plan-feature"><span class="check">✓</span> High-risk user alerts</div>
+                <div class="plan-feature"><span class="check">✓</span> Up to 10 team members</div>
+                <div class="plan-feature"><span class="check">✓</span> Priority email support</div>
+                <hr class="plan-divider">
+                <div class="plan-feature muted"><span class="cross">✗</span> Custom modules</div>
+                <div class="plan-feature muted"><span class="cross">✗</span> API access</div>
+                <div class="plan-feature muted"><span class="cross">✗</span> White-label</div>
             </div>
         </div>
 
-        <!-- Active Offers Section -->
-        <div class="offers-section" id="offers-section">
-            <div class="offers-header">
-                <h2>🎁 Active Offers</h2>
-                <p>Limited time deals based on your activity and upcoming events</p>
-            </div>
-            <div class="offers-grid" id="offers-grid">
-                <!-- Populated by JS -->
-            </div>
-        </div>
-
-        <!-- AI Gate Explainer -->
-        <div class="pro-gate-note">
-            <div class="gate-icon">🤖</div>
-            <div>
-                <strong>Why does AI require Business or Enterprise?</strong>
-                <p>Our neural network analyses every quiz answer, identifies patterns in mistakes across your team, and generates personalised training paths per employee. This requires significant compute resources — Business and Enterprise plans keep it sustainable while ensuring Free is genuinely useful for individuals.</p>
-            </div>
-        </div>
-
-        <!-- FAQ -->
-        <div class="faq-section">
-            <h2>Common Questions</h2>
-            <div class="faq-grid">
-                <div class="faq-item">
-                    <h3>Can I stay on Free forever?</h3>
-                    <p>Yes. Free includes 3 modules with no time limit. Upgrade only when your team needs AI features, admin tools or more modules.</p>
-                </div>
-                <div class="faq-item">
-                    <h3>How does per-user pricing work?</h3>
-                    <p>You pay per active user per month. Business caps at 10 users ($80 max/mo). Enterprise caps at 30 users ($450 max/mo). Add or remove users anytime.</p>
-                </div>
-                <div class="faq-item">
-                    <h3>What's the yearly discount?</h3>
-                    <p>Pay annually and save 20% — Business drops to $6.40/user/mo and Enterprise to $12/user/mo. Billed as one annual payment.</p>
-                </div>
-                <div class="faq-item">
-                    <h3>Can I switch plans anytime?</h3>
-                    <p>Yes. Upgrade instantly, downgrade at the end of your billing period. No penalties or hidden fees.</p>
-                </div>
-                <div class="faq-item">
-                    <h3>Do you offer discounts for NGOs or schools?</h3>
-                    <p>Yes — contact us at hello@shieldiq.com for education and nonprofit pricing. We believe everyone deserves cybersecurity awareness.</p>
-                </div>
-                <div class="faq-item">
-                    <h3>What payment methods do you accept?</h3>
-                    <p>M-PESA, Visa, Mastercard, and bank transfer for Enterprise. More East African payment options coming soon.</p>
-                </div>
+        <!-- ENTERPRISE -->
+        <div class="plan-card enterprise-plan">
+            <div class="plan-name" style="color:#bf5af2">Enterprise</div>
+            <div class="plan-price">$15 <span>/ user / mo</span></div>
+            <p class="plan-desc">For large organizations needing full control, compliance, and custom training.</p>
+            <a href="/enterprise-trial" class="plan-btn plan-btn-enterprise">Start 7-Day Free Trial</a>
+            <div class="plan-features">
+                <div class="plan-feature"><span class="check">✓</span> Everything in Business</div>
+                <div class="plan-feature"><span class="check">✓</span> Custom training modules</div>
+                <div class="plan-feature"><span class="check">✓</span> Full API access</div>
+                <div class="plan-feature"><span class="check">✓</span> White-label option</div>
+                <div class="plan-feature"><span class="check">✓</span> Dedicated account manager</div>
+                <div class="plan-feature"><span class="check">✓</span> SLA guarantee</div>
+                <div class="plan-feature"><span class="check">✓</span> Up to 30 team members</div>
+                <div class="plan-feature"><span class="check">✓</span> Phone & email support</div>
+                <div class="plan-feature"><span class="check">✓</span> Compliance documentation</div>
             </div>
         </div>
 
+    </div>
+
+    <!-- FAQ -->
+    <div class="faq-section">
+        <h2>Frequently Asked Questions</h2>
+
+        <div class="faq-item" onclick="toggleFaq(this)">
+            <div class="faq-q">Do I need a credit card for the free plan? <span>+</span></div>
+            <div class="faq-a">No. The free plan requires no payment details. Just register and start training immediately.</div>
+        </div>
+        <div class="faq-item" onclick="toggleFaq(this)">
+            <div class="faq-q">What happens after my 7-day trial ends? <span>+</span></div>
+            <div class="faq-a">After 7 days, your account is automatically downgraded to the free plan unless you choose to continue. You will receive a reminder email on day 6 of your trial.</div>
+        </div>
+        <div class="faq-item" onclick="toggleFaq(this)">
+            <div class="faq-q">How does the AI feature work? <span>+</span></div>
+            <div class="faq-a">The AI analyzes each team member's quiz results, identifies their weak areas, and generates personalized training recommendations. It's available on Business and Enterprise plans only.</div>
+        </div>
+        <div class="faq-item" onclick="toggleFaq(this)">
+            <div class="faq-q">Can I add more than 10 users on Business? <span>+</span></div>
+            <div class="faq-a">Business supports up to 10 users at $8/user/month (max $80/month). If you need more, upgrade to Enterprise which supports up to 30 users, or contact us for a custom plan.</div>
+        </div>
+        <div class="faq-item" onclick="toggleFaq(this)">
+            <div class="faq-q">Is payment secure? <span>+</span></div>
+            <div class="faq-a">Yes. All payment processing is 256-bit SSL encrypted and PCI DSS compliant. We place a $1 hold to verify your card, which is automatically released within 2 minutes.</div>
+        </div>
     </div>
 
     <footer>
         <div class="footer-content">
-            <span>🛡️ ShieldIQ</span>
-            <span>A Glitch Factory FX Product</span>
-            <span>© 2026 All rights reserved</span>
+            <div>🛡️ ShieldIQ &copy; 2026</div>
+            <div>Cybersecurity awareness, made simple.</div>
+            <div><a href="/pricing" style="color:var(--text-muted);text-decoration:none">Pricing</a> · <a href="mailto:support@shieldiq.com" style="color:var(--text-muted);text-decoration:none">Support</a></div>
         </div>
     </footer>
 
     <script>
-        let isYearly = false;
-
-        const prices = {
-            business: { monthly: 8, yearly: 6.40 },
-            enterprise: { monthly: 15, yearly: 12 }
-        };
-
-        const totals = {
-            business: { monthly: 'Max $80/mo for 10 users', yearly: 'Max $768/yr for 10 users (save $192)' },
-            enterprise: { monthly: 'Max $450/mo for 30 users', yearly: 'Max $4,320/yr for 30 users (save $1,080)' }
-        };
-
-        function toggleBilling() {
-            isYearly = !isYearly;
-            const knob = document.getElementById('toggle-knob');
-            const monthlyLabel = document.getElementById('monthly-label');
-            const yearlyLabel = document.getElementById('yearly-label');
-
-            knob.style.transform = isYearly ? 'translateX(24px)' : 'translateX(0)';
-            monthlyLabel.style.color = isYearly ? 'var(--text-muted)' : 'var(--primary)';
-            yearlyLabel.style.color = isYearly ? 'var(--primary)' : 'var(--text-muted)';
-
-            // Update prices
-            const period = isYearly ? 'yearly' : 'monthly';
-            document.getElementById('business-price').textContent = '$' + prices.business[period];
-            document.getElementById('enterprise-price').textContent = '$' + prices.enterprise[period];
-            document.getElementById('business-total').textContent = totals.business[period];
-            document.getElementById('enterprise-total').textContent = totals.enterprise[period];
-
-            // Show/hide yearly notes
-            document.getElementById('business-yearly-note').style.display = isYearly ? 'block' : 'none';
-            document.getElementById('enterprise-yearly-note').style.display = isYearly ? 'block' : 'none';
+        function toggleNav() {
+            document.getElementById('nav-links').classList.toggle('open');
         }
-
-        function selectPlan(plan) {
-            const token = localStorage.getItem('token');
-            if (plan === 'free') {
-                window.location.href = token ? '/dashboard' : '/register';
-                return;
-            }
-            if (!token) {
-                window.location.href = '/register';
-                return;
-            }
-            // For now show contact message — payment integration coming
-            showUpgradeModal(plan);
+        function toggleFaq(el) {
+            const a = el.querySelector('.faq-a');
+            const icon = el.querySelector('.faq-q span');
+            a.classList.toggle('open');
+            icon.textContent = a.classList.contains('open') ? '−' : '+';
         }
-
-        function showUpgradeModal(plan) {
-            const modal = document.createElement('div');
-            modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:1000';
-            modal.innerHTML = `
-                <div style="background:#111118;border:1px solid rgba(0,212,255,0.3);border-radius:24px;padding:48px;max-width:480px;text-align:center">
-                    <div style="font-size:48px;margin-bottom:16px">${plan === 'business' ? '🏢' : '🏛️'}</div>
-                    <h2 style="color:#fff;margin-bottom:12px">Upgrade to ${plan === 'business' ? 'Business' : 'Enterprise'}</h2>
-                    <p style="color:rgba(255,255,255,0.6);margin-bottom:24px;line-height:1.6">Payment integration coming soon! To upgrade your team now, contact us directly and we'll get you set up within 24 hours.</p>
-                    <a href="mailto:hello@shieldiq.com?subject=Upgrade to ${plan}" style="display:block;background:#00D4FF;color:#000;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:700;margin-bottom:12px">📧 Contact Us to Upgrade</a>
-                    <button onclick="this.parentElement.parentElement.remove()" style="background:transparent;border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);padding:10px 24px;border-radius:8px;cursor:pointer;width:100%">Maybe Later</button>
-                </div>
-            `;
-            document.body.appendChild(modal);
-            modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
-        }
-
-        // ============================================
-        // DYNAMIC OFFERS ENGINE
-        // ============================================
-
-        const holidays = [
-            // East Africa
-            { month: 1, day: 1, name: "New Year's Day", emoji: "🎆", discount: 25, region: "Global" },
-            { month: 2, day: 14, name: "Valentine's Day", emoji: "❤️", discount: 14, region: "Global" },
-            { month: 3, day: 8, name: "International Women's Day", emoji: "👩", discount: 20, region: "Global" },
-            { month: 4, day: 22, name: "Earth Day", emoji: "🌍", discount: 15, region: "Global" },
-            { month: 5, day: 1, name: "Labour Day", emoji: "✊", discount: 20, region: "East Africa" },
-            { month: 6, day: 1, name: "Madaraka Day", emoji: "🇰🇪", discount: 30, region: "Kenya" },
-            { month: 6, day: 9, name: "Uganda's National Heroes Day", emoji: "🇺🇬", discount: 25, region: "Uganda" },
-            { month: 6, day: 26, name: "Independence Day", emoji: "🇲🇬", discount: 25, region: "East Africa" },
-            { month: 7, day: 7, name: "Saba Saba Day", emoji: "🇹🇿", discount: 25, region: "Tanzania" },
-            { month: 10, day: 10, name: "Moi Day", emoji: "🇰🇪", discount: 20, region: "Kenya" },
-            { month: 10, day: 20, name: "Mashujaa Day", emoji: "🇰🇪", discount: 25, region: "Kenya" },
-            { month: 10, day: 9, name: "Uganda Independence Day", emoji: "🇺🇬", discount: 30, region: "Uganda" },
-            { month: 11, day: 11, name: "Remembrance Day", emoji: "🕊️", discount: 15, region: "Global" },
-            { month: 12, day: 12, name: "Jamhuri Day", emoji: "🇰🇪", discount: 35, region: "Kenya" },
-            { month: 12, day: 25, name: "Christmas Day", emoji: "🎄", discount: 30, region: "Global" },
-            { month: 12, day: 31, name: "New Year's Eve", emoji: "🎊", discount: 20, region: "Global" },
-        ];
-
-        function getActiveOffers() {
-            const now = new Date();
-            const month = now.getMonth() + 1;
-            const day = now.getDate();
-            const offers = [];
-
-            // Check holidays (within 3 days before or on the day)
-            holidays.forEach(h => {
-                const diff = (h.month - month) * 30 + (h.day - day);
-                if (diff >= 0 && diff <= 3) {
-                    offers.push({
-                        type: 'holiday',
-                        icon: h.emoji,
-                        title: `${h.name} ${diff === 0 ? 'Special' : 'Coming Soon'}`,
-                        desc: `${h.region} celebration — ${diff === 0 ? 'Today only!' : `${diff} day${diff > 1 ? 's' : ''} left`}`,
-                        discount: h.discount,
-                        color: '#00D4FF'
-                    });
-                }
-            });
-
-            // Streak offer
-            const userData = JSON.parse(localStorage.getItem('user') || '{}');
-            const streak = parseInt(localStorage.getItem('streak') || '0');
-            if (streak >= 7) {
-                offers.push({
-                    type: 'streak',
-                    icon: '🔥',
-                    title: `${streak}-Day Streak Reward!`,
-                    desc: 'You\'ve been training consistently — here\'s your loyalty discount',
-                    discount: streak >= 30 ? 25 : streak >= 14 ? 20 : 15,
-                    color: '#ff9f0a'
-                });
-            }
-
-            // End of month offer
-            const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-            if (day >= daysInMonth - 2) {
-                offers.push({
-                    type: 'endofmonth',
-                    icon: '📅',
-                    title: 'End of Month Deal',
-                    desc: 'Last chance this month — upgrade before the month ends',
-                    discount: 10,
-                    color: '#34c759'
-                });
-            }
-
-            // New user offer (always show for logged out users)
-            const token = localStorage.getItem('token');
-            if (!token) {
-                offers.push({
-                    type: 'welcome',
-                    icon: '👋',
-                    title: 'Welcome Offer',
-                    desc: 'First-time signup discount — register today to claim',
-                    discount: 15,
-                    color: '#bf5af2'
-                });
-            }
-
-            return offers;
-        }
-
-        function renderOffers() {
-            const offers = getActiveOffers();
-            const grid = document.getElementById('offers-grid');
-            const section = document.getElementById('offers-section');
-
-            if (offers.length === 0) {
-                section.style.display = 'none';
-                return;
-            }
-
-            grid.innerHTML = offers.map(offer => `
-                <div class="offer-card" style="border-color:${offer.color}20; background:${offer.color}08">
-                    <div class="offer-card-icon">${offer.icon}</div>
-                    <div class="offer-card-info">
-                        <div class="offer-card-title">${offer.title}</div>
-                        <div class="offer-card-desc">${offer.desc}</div>
-                    </div>
-                    <div class="offer-card-discount" style="color:${offer.color}">
-                        ${offer.discount}% OFF
-                    </div>
-                </div>
-            `).join('');
-
-            // Show top offer in banner
-            const top = offers[0];
-            document.getElementById('offer-icon').textContent = top.icon;
-            document.getElementById('offer-text').textContent = `${top.title} — Use code SHIELD${top.discount} at checkout`;
-            document.getElementById('offer-badge').textContent = `${top.discount}% OFF`;
-            document.getElementById('offer-banner').style.display = 'block';
-        }
-
-        renderOffers();
     </script>
 </body>
 </html>

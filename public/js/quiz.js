@@ -1,201 +1,109 @@
-const token = localStorage.getItem('token');
-if (!token) window.location.href = '/login';
+const express = require('express');
+const router = express.Router();
+const jwt = require('jsonwebtoken');
+const db = require('../db');
 
-const userData = JSON.parse(localStorage.getItem('user') || '{}');
-document.getElementById('user-name').textContent = userData.name || 'User';
-document.getElementById('user-company').textContent = userData.company || 'Company';
-document.getElementById('user-avatar').textContent = (userData.name || 'U')[0].toUpperCase();
-
-const params = new URLSearchParams(window.location.search);
-const category = params.get('cat') || 'phishing';
-const categoryData = questionBank[category];
-
-let currentQuestion = 0;
-let score = 0;
-let answers = [];
-let questions = [];
-let weakAreas = []; // ← fixed: track missed questions
-
-function initIntro() {
-    if (!categoryData) { window.location.href = '/dashboard'; return; }
-    document.getElementById('intro-icon').textContent = categoryData.icon;
-    document.getElementById('intro-title').textContent = categoryData.title;
-    document.getElementById('intro-count').textContent = categoryData.questions.length;
-    document.getElementById('intro-diff').textContent = categoryData.difficulty;
-    document.getElementById('category-label').textContent = categoryData.title;
-    document.getElementById('question-counter').textContent = `Question 1 of ${categoryData.questions.length}`;
-}
-
-function shuffle(array) {
-    for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
-    }
-    return array;
-}
-
-function startQuiz() {
-    // Shuffle questions
-    questions = shuffle([...categoryData.questions]);
-    
-    // Shuffle options for each question while tracking correct answer
-    questions = questions.map(q => {
-        const options = q.options.map((opt, i) => ({ text: opt, isCorrect: i === q.correct }));
-        const shuffled = shuffle(options);
-        return {
-            ...q,
-            options: shuffled.map(o => o.text),
-            correct: shuffled.findIndex(o => o.isCorrect)
-        };
-    });
-
-    document.getElementById('intro-screen').style.display = 'none';
-    document.getElementById('quiz-screen').style.display = 'block';
-    loadQuestion();
-}
-
-
-function loadQuestion() {
-    const q = questions[currentQuestion];
-    const total = questions.length;
-    const progress = (currentQuestion / total) * 100;
-    document.getElementById('progress-fill').style.width = progress + '%';
-    document.getElementById('question-counter').textContent = `Question ${currentQuestion + 1} of ${total}`;
-    document.getElementById('q-number').textContent = String(currentQuestion + 1).padStart(2, '0');
-    document.getElementById('question-text').textContent = q.question;
-    document.getElementById('feedback').style.display = 'none';
-    document.getElementById('next-btn').style.display = 'none';
-
-    const grid = document.getElementById('options-grid');
-    grid.innerHTML = '';
-    q.options.forEach((option, index) => {
-        const btn = document.createElement('button');
-        btn.className = 'option-btn';
-        btn.textContent = option;
-        btn.onclick = () => selectAnswer(index, btn);
-        grid.appendChild(btn);
-    });
-}
-
-function selectAnswer(selectedIndex, btn) {
-    const q = questions[currentQuestion];
-    const allBtns = document.querySelectorAll('.option-btn');
-    const isCorrect = selectedIndex === q.correct;
-
-    allBtns.forEach(b => { b.classList.add('disabled'); b.onclick = null; });
-    allBtns[q.correct].classList.add('correct');
-    if (!isCorrect) {
-        btn.classList.add('wrong');
-        // Track weak area: use question topic or the question itself (trimmed)
-        const weakLabel = q.topic || q.question.substring(0, 60);
-        weakAreas.push(weakLabel);
-    }
-
-    answers.push({ question: q.question, correct: isCorrect, category });
-    if (isCorrect) score++;
-
-    const feedback = document.getElementById('feedback');
-    feedback.className = 'feedback ' + (isCorrect ? 'correct-feedback' : 'wrong-feedback');
-    document.getElementById('feedback-icon').textContent = isCorrect ? '✅' : '❌';
-    document.getElementById('feedback-title').textContent = isCorrect ? 'Correct!' : 'Incorrect';
-    document.getElementById('feedback-explanation').textContent = q.explanation;
-    feedback.style.display = 'flex';
-
-    const nextBtn = document.getElementById('next-btn');
-    nextBtn.style.display = 'block';
-    nextBtn.textContent = currentQuestion + 1 < questions.length ? 'Next Question →' : 'See Results →';
-}
-
-function nextQuestion() {
-    currentQuestion++;
-    if (currentQuestion < questions.length) {
-        loadQuestion();
-    } else {
-        showResults();
-    }
-}
-
-function showResults() {
-    document.getElementById('quiz-screen').style.display = 'none';
-    document.getElementById('results-screen').style.display = 'flex';
-
-    const total = questions.length;
-    const percentage = Math.round((score / total) * 100);
-
-    document.getElementById('final-score').textContent = score;
-    document.getElementById('score-percentage').textContent = percentage + '%';
-
-    let icon, title;
-    if (percentage >= 80) { icon = '🏆'; title = 'Excellent Work!'; }
-    else if (percentage >= 60) { icon = '👍'; title = 'Good Job!'; }
-    else { icon = '📚'; title = 'Keep Learning!'; }
-    document.getElementById('results-icon').textContent = icon;
-    document.getElementById('results-title').textContent = title;
-
-    let aiText;
-    if (percentage >= 80) {
-        aiText = `Great performance on ${categoryData.title}! Our AI suggests moving to a more advanced module to continue building your skills.`;
-    } else if (percentage >= 60) {
-        aiText = `Good effort on ${categoryData.title}. Our AI has identified some weak areas — reviewing the questions you missed will strengthen your understanding.`;
-    } else {
-        aiText = `Our AI recommends revisiting ${categoryData.title} fundamentals. Focus on the questions you missed and retake the quiz to improve your score.`;
-    }
-    document.getElementById('ai-text').textContent = aiText;
-
-    document.getElementById('results-breakdown').innerHTML = `
-        <div style="display:flex; justify-content:space-between; margin-bottom:12px">
-            <span style="color:var(--text-muted)">Module</span>
-            <span style="color:var(--text-muted)">Score</span>
-        </div>
-        <div style="display:flex; justify-content:space-between; align-items:center">
-            <span>${categoryData.icon} ${categoryData.title}</span>
-            <span style="color:${percentage >= 60 ? '#34c759' : '#ff6b6b'}; font-weight:700">${score}/${total} (${percentage}%)</span>
-        </div>
-        ${weakAreas.length > 0 ? `
-        <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--glass-border)">
-            <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px">AREAS TO REVIEW</div>
-            ${weakAreas.slice(0,3).map(a => `<div style="font-size:13px; color:#ff9f0a; margin-bottom:4px">⚠ ${a}</div>`).join('')}
-        </div>` : ''}
-    `;
-
-    saveResult(percentage);
-}
-
-async function saveResult(percentage) {
+function auth(req, res, next) {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ message: 'Unauthorized' });
     try {
-        await fetch('/api/quiz/result', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({
-                category,
-                score: percentage,
-                total: questions.length,
-                correct: score,
-                weakAreas: weakAreas // ← now sent to backend
-            })
-        });
-    } catch (err) {
-        console.error('Could not save result:', err);
+        req.user = jwt.verify(token, process.env.JWT_SECRET);
+        next();
+    } catch {
+        res.status(401).json({ message: 'Invalid token' });
     }
 }
 
-function retakeQuiz() {
-    currentQuestion = 0;
-    score = 0;
-    answers = [];
-    weakAreas = [];
-    document.getElementById('results-screen').style.display = 'none';
-    document.getElementById('quiz-screen').style.display = 'block';
-    loadQuestion();
-}
+// Save quiz result — now properly saves weak_areas
+router.post('/result', auth, (req, res) => {
+    const { category, score, total, wrongQuestions } = req.body;
 
-function logout() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    window.location.href = '/login';
-}
+    try {
+        // wrongQuestions is an array of topic strings the user got wrong
+        // e.g. ["Phishing Links", "Email Spoofing", "Password Reuse"]
+        const weakAreas = Array.isArray(wrongQuestions)
+            ? wrongQuestions.join(',')
+            : '';
 
-initIntro();
+        db.prepare(
+            'INSERT INTO quiz_results (user_id, category, score, weak_areas) VALUES (?, ?, ?, ?)'
+        ).run(req.user.id, category, score, weakAreas);
+
+        res.json({ message: 'Result saved' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error saving result' });
+    }
+});
+
+// Get user results
+router.get('/results', auth, (req, res) => {
+    try {
+        const results = db.prepare(
+            'SELECT * FROM quiz_results WHERE user_id = ? ORDER BY taken_at DESC'
+        ).all(req.user.id);
+        res.json(results);
+    } catch (err) {
+        res.status(500).json({ message: 'Error fetching results' });
+    }
+});
+
+// Get user stats
+router.get('/stats', auth, (req, res) => {
+    try {
+        const results = db.prepare(
+            'SELECT * FROM quiz_results WHERE user_id = ?'
+        ).all(req.user.id);
+
+        const modulesDone = results.length;
+        const avgScore = modulesDone > 0
+            ? Math.round(results.reduce((sum, r) => sum + r.score, 0) / modulesDone)
+            : 0;
+
+        let riskLevel;
+        if (avgScore >= 80) riskLevel = 'Low';
+        else if (avgScore >= 60) riskLevel = 'Medium';
+        else if (avgScore > 0) riskLevel = 'High';
+        else riskLevel = 'Unknown';
+
+        // Aggregate weak areas
+        const weakCounts = {};
+        results.forEach(r => {
+            if (r.weak_areas) {
+                r.weak_areas.split(',').filter(Boolean).forEach(area => {
+                    weakCounts[area] = (weakCounts[area] || 0) + 1;
+                });
+            }
+        });
+
+        const weakAreas = Object.entries(weakCounts)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5)
+            .map(([area]) => area);
+
+        res.json({ modulesDone, avgScore, riskLevel, weakAreas });
+    } catch (err) {
+        res.status(500).json({ message: 'Error fetching stats' });
+    }
+});
+
+// Leaderboard
+router.get('/leaderboard', auth, (req, res) => {
+    try {
+        const rankings = db.prepare(`
+            SELECT u.name, u.company,
+                   ROUND(AVG(q.score)) as avg_score,
+                   COUNT(q.id) as modules
+            FROM users u
+            JOIN quiz_results q ON u.id = q.user_id
+            GROUP BY u.id
+            ORDER BY avg_score DESC
+            LIMIT 20
+        `).all();
+        res.json(rankings);
+    } catch (err) {
+        res.status(500).json({ message: 'Error fetching leaderboard' });
+    }
+});
+
+module.exports = router;
