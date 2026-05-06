@@ -26,7 +26,6 @@ async function handleLogin() {
         const data = await response.json();
 
         if (response.ok && data.requiresMFA) {
-            // Show MFA input
             successMsg.textContent = data.message;
             successMsg.style.display = 'block';
             errorMsg.style.display = 'none';
@@ -45,6 +44,10 @@ async function handleLogin() {
             errorMsg.textContent = data.message || 'Invalid credentials';
             errorMsg.style.display = 'block';
             successMsg.style.display = 'none';
+            if (data.message === 'Please verify your email first') {
+                const resendLink = document.getElementById('resend-link');
+                if (resendLink) resendLink.style.display = 'block';
+            }
         }
     } catch (err) {
         errorMsg.textContent = 'Server error. Please try again.';
@@ -199,4 +202,15 @@ async function verifyEmail(email) {
         errorMsg.textContent = 'Server error. Please try again.';
         errorMsg.style.display = 'block';
     }
+}
+
+async function resendVerification() {
+    const email = document.getElementById('email').value.trim();
+    if (!email) {
+        document.getElementById('error-msg').textContent = 'Enter your email first';
+        document.getElementById('error-msg').style.display = 'block';
+        return;
+    }
+    sessionStorage.setItem('pending_email', email);
+    window.location.href = '/verify';
 }
