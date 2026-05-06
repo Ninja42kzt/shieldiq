@@ -9,6 +9,10 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// CRITICAL: Tells Express to trust Render's proxy headers
+// Fixes the 'X-Forwarded-For' validation error in your logs
+app.set('trust proxy', 1); 
+
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -49,5 +53,5 @@ app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'adm
 app.get('/pricing', (req, res) => res.sendFile(path.join(__dirname, 'public', 'pricing.html')));
 
 app.listen(PORT, () => {
-    console.log(`ShieldIQ running on http://localhost:${PORT}`);
+    console.log(`ShieldIQ running on port ${PORT}`);
 });
