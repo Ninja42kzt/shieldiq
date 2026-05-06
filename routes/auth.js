@@ -287,11 +287,11 @@ router.post('/disable-2fa', async (req, res) => {
     }
 });
 
-// TEMP — manual verify (remove after testing)
+// Temp admin verify
 router.get('/force-verify/:email', (req, res) => {
     try {
         db.prepare('UPDATE users SET verified = 1 WHERE email = ?').run(req.params.email);
-        res.json({ message: 'Verified' });
+        res.json({ message: 'User verified successfully' });
     } catch(e) {
         res.status(500).json({ message: e.message });
     }
