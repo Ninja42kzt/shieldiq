@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Login - ShieldIQ</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/auth.css">
+</head>
+<body class="auth-body">
+
+    <div class="auth-bg"></div>
+
+    <nav>
+        <div class="logo">🛡️ ShieldIQ</div>
+        <div class="nav-links">
+            <a href="/login">Back to Login</a>
+        </div>
+    </nav>
+
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <div class="auth-icon">📧</div>
+                <h1>Check Your Email</h1>
+                <p id="subtitle">We sent a 6-digit code to your email</p>
+            </div>
+
+            <div id="error-msg" class="alert alert-error" style="display:none"></div>
+            <div id="success-msg" class="alert alert-success" style="display:none"></div>
+
+            <div class="auth-form">
+                <div class="form-group">
+                    <label>Verification Code</label>
+                    <input type="text" id="otp-code" placeholder="000000" maxlength="6"
+                        style="letter-spacing:8px; text-align:center; font-size:24px; font-weight:700"
+                        oninput="this.value = this.value.replace(/[^0-9]/g, '')" />
+                </div>
+                <button class="btn-primary full" onclick="verifyCode()">
+                    Verify & Login →
+                </button>
+                <p class="auth-switch">
+                    Didn't get the code? <a href="/login">Go back and try again</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const email = sessionStorage.getItem('mfa_email');
+        if (!email) window.location.href = '/login';
+
+        document.getElementById('subtitle').textContent = `We sent a 6-digit code to ${email}`;
+
+        // Auto-submit when 6 digits entered
+        document.getElementById('otp-code').addEventListener('input', function() {
+            if (this.value.length === 6) verifyCode();
+        });
+
+        async function verifyCode() {
+            const otp = document.getElementById('otp-code').value.trim();
+            const errorMsg = document.getElementById('error-msg');
+            const successMsg = document.getElementById('success-msg');
+
+            if (otp.length !== 6) {
+                errorMsg.textContent = 'Please enter the 6-digit code';
+                errorMsg.style.display = 'block';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/auth/verify-login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, otp })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.token) {
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    sessionStorage.removeItem('mfa_email');
+                    successMsg.textContent = 'Login successful! Redirecting...';
+                    successMsg.style.display = 'block';
+                    errorMsg.style.display = 'none';
+                    setTimeout(() => window.location.href = '/dashboard', 1000);
+                } else {
+                    errorMsg.textContent = data.message || 'Invalid code';
+                    errorMsg.style.display = 'block';
+                    successMsg.style.display = 'none';
+                    document.getElementById('otp-code').value = '';
+                }
+            } catch (err) {
+                errorMsg.textContent = 'Server error. Please try again.';
+                errorMsg.style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html>

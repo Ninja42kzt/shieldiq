@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pricing - ShieldIQ</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/pricing.css">
+</head>
+<body>
+    <div class="auth-bg"></div>
+
+    <nav>
+        <div class="logo">🛡️ ShieldIQ</div>
+        <div class="nav-links">
+            <a href="/">Home</a>
+            <a href="/dashboard">Dashboard</a>
+            <a href="/login" class="btn-outline">Login</a>
+        </div>
+    </nav>
+
+    <div class="pricing-page">
+        <div class="pricing-header">
+            <span class="badge">Simple Pricing</span>
+            <h1>Choose Your Plan</h1>
+            <p>Start free, upgrade when you need AI-powered insights</p>
+        </div>
+
+        <div class="pricing-grid">
+
+            <!-- Free Plan -->
+            <div class="pricing-card">
+                <div class="plan-name">Free</div>
+                <div class="plan-price">
+                    <span class="price-amount">$0</span>
+                    <span class="price-period">/ month</span>
+                </div>
+                <p class="plan-desc">Perfect for individuals getting started with cybersecurity training</p>
+                <ul class="plan-features">
+                    <li class="feature included">✅ All 6 training modules</li>
+                    <li class="feature included">✅ Score tracking & history</li>
+                    <li class="feature included">✅ Company leaderboard</li>
+                    <li class="feature included">✅ Basic progress reports</li>
+                    <li class="feature included">✅ Email MFA protection</li>
+                    <li class="feature excluded">❌ AI-powered recommendations</li>
+                    <li class="feature excluded">❌ Weak area analysis</li>
+                    <li class="feature excluded">❌ Admin panel</li>
+                    <li class="feature excluded">❌ Team risk dashboard</li>
+                    <li class="feature excluded">❌ Priority support</li>
+                </ul>
+                <button class="plan-btn free" onclick="selectFree()">Get Started Free</button>
+            </div>
+
+            <!-- Pro Plan -->
+            <div class="pricing-card pro">
+                <div class="plan-badge-top">Most Popular</div>
+                <div class="plan-name">Pro</div>
+                <div class="plan-price">
+                    <span class="price-amount">$12</span>
+                    <span class="price-period">/ user / month</span>
+                </div>
+                <p class="plan-desc">Full power for teams and companies serious about security</p>
+                <ul class="plan-features">
+                    <li class="feature included">✅ Everything in Free</li>
+                    <li class="feature included pro-feature">🤖 AI-powered recommendations</li>
+                    <li class="feature included pro-feature">🎯 Weak area analysis per user</li>
+                    <li class="feature included pro-feature">🔧 Admin panel access</li>
+                    <li class="feature included pro-feature">📊 Team risk dashboard</li>
+                    <li class="feature included pro-feature">📈 Advanced analytics</li>
+                    <li class="feature included pro-feature">🚨 High-risk user alerts</li>
+                    <li class="feature included pro-feature">📧 Custom training reports</li>
+                    <li class="feature included">✅ Priority email support</li>
+                    <li class="feature included">✅ Unlimited team members</li>
+                </ul>
+                <button class="plan-btn pro" onclick="selectPro()">Upgrade to Pro →</button>
+            </div>
+
+        </div>
+
+        <!-- Pro gates explainer -->
+        <div class="pro-gate-note">
+            <div class="gate-icon">🤖</div>
+            <div>
+                <strong>Why Pro gates the AI?</strong>
+                <p>Our AI engine analyses individual quiz answers, identifies patterns in mistakes, and generates personalised training paths. This requires significant compute — Pro keeps it sustainable while keeping Free genuinely useful.</p>
+            </div>
+        </div>
+
+        <!-- FAQ -->
+        <div class="faq-section">
+            <h2>Common Questions</h2>
+            <div class="faq-grid">
+                <div class="faq-item">
+                    <h3>Can I stay on Free forever?</h3>
+                    <p>Yes. Free includes all training modules with no time limit. You only need Pro for AI features and admin tools.</p>
+                </div>
+                <div class="faq-item">
+                    <h3>How does per-user pricing work?</h3>
+                    <p>You pay $12/month for each team member on Pro. One admin can manage billing for the whole company.</p>
+                </div>
+                <div class="faq-item">
+                    <h3>Can I cancel anytime?</h3>
+                    <p>Yes. Cancel at any time — your team drops to Free at the end of the billing period with no penalties.</p>
+                </div>
+                <div class="faq-item">
+                    <h3>Is there a trial?</h3>
+                    <p>The Free plan is essentially an unlimited trial. Upgrade when your team needs the AI and admin features.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="footer-content">
+            <span>🛡️ ShieldIQ</span>
+            <span>A Glitch Factory FX Product</span>
+            <span>© 2026 All rights reserved</span>
+        </div>
+    </footer>
+
+    <script>
+        function selectFree() {
+            const token = localStorage.getItem('token');
+            window.location.href = token ? '/dashboard' : '/register';
+        }
+        function selectPro() {
+            const token = localStorage.getItem('token');
+            if (!token) { window.location.href = '/register'; return; }
+            alert('Pro upgrade coming soon! Contact us at hello@shieldiq.com to upgrade your team.');
+        }
+    </script>
+</body>
+</html>

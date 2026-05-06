@@ -3,7 +3,6 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const db = require('../db');
 
-// Middleware to verify token
 function auth(req, res, next) {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) return res.status(401).json({ message: 'Unauthorized' });
@@ -15,15 +14,21 @@ function auth(req, res, next) {
     }
 }
 
-// Save quiz result
+// Save quiz result — now properly saves weak_areas
 router.post('/result', auth, (req, res) => {
-    const { category, score, total, correct } = req.body;
+    const { category, score, total, correct, weakAreas } = req.body;
     try {
+        const weakAreasJson = weakAreas && weakAreas.length > 0
+            ? JSON.stringify(weakAreas)
+            : null;
+
         db.prepare(
-            'INSERT INTO quiz_results (user_id, category, score) VALUES (?, ?, ?)'
-        ).run(req.user.id, category, score);
+            'INSERT INTO quiz_results (user_id, category, score, weak_areas) VALUES (?, ?, ?, ?)'
+        ).run(req.user.id, category, score, weakAreasJson);
+
         res.json({ message: 'Result saved' });
     } catch (err) {
+        console.error(err);
         res.status(500).json({ message: 'Error saving result' });
     }
 });
@@ -43,23 +48,41 @@ router.get('/results', auth, (req, res) => {
 // Get user stats
 router.get('/stats', auth, (req, res) => {
     try {
-        const results = db.prepare(
-            'SELECT * FROM quiz_results WHERE user_id = ?'
-        ).all(req.user.id);
-
+        const results = db.prepare('SELECT * FROM quiz_results WHERE user_id = ?').all(req.user.id);
         const modulesDone = results.length;
         const avgScore = modulesDone > 0
             ? Math.round(results.reduce((sum, r) => sum + r.score, 0) / modulesDone)
             : 0;
 
-        // Risk level based on average score
+        // Collect all weak areas across all quizzes
+        const allWeakAreas = [];
+        results.forEach(r => {
+            if (r.weak_areas) {
+                try {
+                    const parsed = JSON.parse(r.weak_areas);
+                    if (Array.isArray(parsed)) allWeakAreas.push(...parsed);
+                } catch(e) {}
+            }
+        });
+
+        // Count frequency of each weak area
+        const weakAreaCounts = {};
+        allWeakAreas.forEach(area => {
+            weakAreaCounts[area] = (weakAreaCounts[area] || 0) + 1;
+        });
+
+        const topWeakAreas = Object.entries(weakAreaCounts)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3)
+            .map(([area]) => area);
+
         let riskLevel;
         if (avgScore >= 80) riskLevel = 'Low';
         else if (avgScore >= 60) riskLevel = 'Medium';
         else if (avgScore > 0) riskLevel = 'High';
         else riskLevel = 'Unknown';
 
-        res.json({ modulesDone, avgScore, riskLevel });
+        res.json({ modulesDone, avgScore, riskLevel, topWeakAreas });
     } catch (err) {
         res.status(500).json({ message: 'Error fetching stats' });
     }

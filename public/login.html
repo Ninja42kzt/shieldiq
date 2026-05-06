@@ -3,16 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ShieldIQ - Login</title>
+    <title>Login - ShieldIQ</title>
+    <meta name="description" content="Login to ShieldIQ - The cybersecurity awareness training platform for your team.">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/auth.css">
 </head>
 <body class="auth-body">
 
-    <!-- Background -->
     <div class="auth-bg"></div>
 
-    <!-- Nav -->
     <nav>
         <div class="logo">🛡️ ShieldIQ</div>
         <div class="nav-links">
@@ -21,7 +20,6 @@
         </div>
     </nav>
 
-    <!-- Login Form -->
     <div class="auth-container">
         <div class="auth-card">
             <div class="auth-header">
@@ -49,10 +47,10 @@
                     <label class="remember">
                         <input type="checkbox" id="remember"> Remember me
                     </label>
-                    <a href="#" class="forgot">Forgot password?</a>
+                    <a href="/forgot-password" class="forgot">Forgot password?</a>
                 </div>
                 <button class="btn-primary full" onclick="handleLogin()">
-                    Login
+                    Login →
                 </button>
                 <p class="auth-switch">
                     Don't have an account? <a href="/register">Register here</a>
@@ -61,6 +59,51 @@
         </div>
     </div>
 
-    <script src="js/auth.js"></script>
+    <script>
+        function togglePass() {
+            const pass = document.getElementById('password');
+            pass.type = pass.type === 'password' ? 'text' : 'password';
+        }
+
+        async function handleLogin() {
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const errorMsg = document.getElementById('error-msg');
+            const successMsg = document.getElementById('success-msg');
+
+            if (!email || !password) {
+                errorMsg.textContent = 'Please fill in all fields';
+                errorMsg.style.display = 'block';
+                successMsg.style.display = 'none';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.requiresMFA) {
+                    successMsg.textContent = 'Code sent! Redirecting...';
+                    successMsg.style.display = 'block';
+                    errorMsg.style.display = 'none';
+                    // Pass email to verify page via sessionStorage
+                    sessionStorage.setItem('mfa_email', email);
+                    setTimeout(() => window.location.href = '/verify', 1000);
+                } else {
+                    errorMsg.textContent = data.message || 'Invalid credentials';
+                    errorMsg.style.display = 'block';
+                    successMsg.style.display = 'none';
+                }
+            } catch (err) {
+                errorMsg.textContent = 'Server error. Please try again.';
+                errorMsg.style.display = 'block';
+            }
+        }
+    </script>
 </body>
 </html>

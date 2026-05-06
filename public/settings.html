@@ -3,12 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ShieldIQ - Settings</title>
+    <title>Settings - ShieldIQ</title>
+    <meta name="description" content="Manage your ShieldIQ account settings, security, and preferences.">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/auth.css">
 </head>
 <body class="dash-body">
+<button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
     <aside class="sidebar">
         <div class="sidebar-logo">🛡️ ShieldIQ</div>
         <nav class="sidebar-nav">
@@ -68,19 +71,56 @@
             <!-- Security Card -->
             <div style="background:var(--glass); border:1px solid var(--glass-border); border-radius:16px; padding:32px">
                 <h2 style="font-size:18px; font-weight:700; margin-bottom:24px">Security</h2>
-                <div style="display:flex; justify-content:space-between; align-items:center; padding:16px 0; border-bottom:1px solid var(--glass-border)">
-                    <div>
-                        <div style="font-size:14px; font-weight:600">Password</div>
-                        <div style="font-size:12px; color:var(--text-muted)">Last changed: recently</div>
+
+                <!-- Change Password -->
+                <div style="padding:16px 0; border-bottom:1px solid var(--glass-border)">
+                    <div style="display:flex; justify-content:space-between; align-items:center">
+                        <div>
+                            <div style="font-size:14px; font-weight:600">Password</div>
+                            <div style="font-size:12px; color:var(--text-muted)">Last changed: recently</div>
+                        </div>
+                        <button class="btn-outline" style="font-size:13px; padding:8px 16px; cursor:pointer" onclick="toggleChangePassword()">Change Password</button>
                     </div>
-                    <button class="btn-outline" style="font-size:13px; padding:8px 16px; cursor:pointer">Change Password</button>
+                    <div id="change-password-form" style="display:none; margin-top:16px">
+                        <div id="pw-error" class="alert alert-error" style="display:none"></div>
+                        <div id="pw-success" class="alert alert-success" style="display:none"></div>
+                        <div class="form-group">
+                            <label>Current Password</label>
+                            <input type="password" id="current-password" placeholder="••••••••"/>
+                        </div>
+                        <div class="form-group">
+                            <label>New Password</label>
+                            <input type="password" id="new-password" placeholder="Min 8 characters"/>
+                        </div>
+                        <div class="form-group">
+                            <label>Confirm New Password</label>
+                            <input type="password" id="confirm-password" placeholder="Repeat new password"/>
+                        </div>
+                        <button class="btn-primary" style="border:none; cursor:pointer; padding:10px 24px" onclick="changePassword()">Update Password</button>
+                    </div>
                 </div>
-                <div style="display:flex; justify-content:space-between; align-items:center; padding:16px 0">
-                    <div>
-                        <div style="font-size:14px; font-weight:600">Two-Factor Authentication</div>
-                        <div style="font-size:12px; color:var(--text-muted)">Add an extra layer of security</div>
+
+                <!-- 2FA -->
+                <div style="padding:16px 0">
+                    <div style="display:flex; justify-content:space-between; align-items:center">
+                        <div>
+                            <div style="font-size:14px; font-weight:600">Two-Factor Authentication</div>
+                            <div style="font-size:12px; color:var(--text-muted)" id="2fa-status">Loading...</div>
+                        </div>
+                        <button class="btn-outline" style="font-size:13px; padding:8px 16px; cursor:pointer" id="2fa-btn" onclick="toggle2FA()">Enable 2FA</button>
                     </div>
-                    <button class="btn-outline" style="font-size:13px; padding:8px 16px; cursor:pointer">Enable 2FA</button>
+                    <!-- 2FA confirmation input (shown after OTP sent) -->
+                    <div id="twofa-confirm-form" style="display:none; margin-top:16px">
+                        <div id="twofa-error" class="alert alert-error" style="display:none"></div>
+                        <div id="twofa-success" class="alert alert-success" style="display:none"></div>
+                        <p style="font-size:13px; color:var(--text-muted); margin-bottom:12px">Enter the 6-digit code sent to your email to confirm:</p>
+                        <div class="form-group">
+                            <input type="text" id="twofa-otp" placeholder="000000" maxlength="6"
+                                style="letter-spacing:8px; text-align:center; font-size:20px; font-weight:700"
+                                oninput="this.value = this.value.replace(/[^0-9]/g, '')"/>
+                        </div>
+                        <button class="btn-primary" style="border:none; cursor:pointer; padding:10px 24px" onclick="confirm2FA()">Confirm & Activate 2FA</button>
+                    </div>
                 </div>
             </div>
 
@@ -114,6 +154,13 @@
         document.getElementById('edit-name').value = userData.name || '';
         document.getElementById('edit-company').value = userData.company || '';
 
+        // 2FA status (stored in localStorage from login response)
+        const mfaEnabled = userData.mfa_enabled || false;
+        document.getElementById('2fa-status').textContent = mfaEnabled
+            ? '✅ Enabled — your account is protected'
+            : 'Not enabled — add an extra layer of security';
+        document.getElementById('2fa-btn').textContent = mfaEnabled ? 'Disable 2FA' : 'Enable 2FA';
+
         function saveProfile() {
             const name = document.getElementById('edit-name').value;
             const company = document.getElementById('edit-company').value;
@@ -124,11 +171,136 @@
             setTimeout(() => document.getElementById('success-msg').style.display = 'none', 3000);
         }
 
+        function toggleChangePassword() {
+            const form = document.getElementById('change-password-form');
+            form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        }
+
+        async function changePassword() {
+            const currentPassword = document.getElementById('current-password').value;
+            const newPassword = document.getElementById('new-password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
+            const errorMsg = document.getElementById('pw-error');
+            const successMsg = document.getElementById('pw-success');
+
+            if (!currentPassword || !newPassword || !confirmPassword) {
+                errorMsg.textContent = 'Please fill in all fields';
+                errorMsg.style.display = 'block';
+                return;
+            }
+
+            if (newPassword !== confirmPassword) {
+                errorMsg.textContent = 'New passwords do not match';
+                errorMsg.style.display = 'block';
+                return;
+            }
+
+            const res = await fetch('/api/auth/change-password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + token
+                },
+                body: JSON.stringify({ currentPassword, newPassword })
+            });
+            const data = await res.json();
+
+            if (res.ok) {
+                successMsg.textContent = data.message;
+                successMsg.style.display = 'block';
+                errorMsg.style.display = 'none';
+                document.getElementById('current-password').value = '';
+                document.getElementById('new-password').value = '';
+                document.getElementById('confirm-password').value = '';
+            } else {
+                errorMsg.textContent = data.message;
+                errorMsg.style.display = 'block';
+                successMsg.style.display = 'none';
+            }
+        }
+
+        async function toggle2FA() {
+            if (mfaEnabled) {
+                // Disable 2FA directly
+                const res = await fetch('/api/auth/disable-2fa', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    const updated = { ...userData, mfa_enabled: false };
+                    localStorage.setItem('user', JSON.stringify(updated));
+                    alert('2FA disabled.');
+                    location.reload();
+                }
+            } else {
+                // Enable 2FA — send OTP first
+                const res = await fetch('/api/auth/enable-2fa', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    document.getElementById('twofa-confirm-form').style.display = 'block';
+                    document.getElementById('twofa-success').textContent = data.message;
+                    document.getElementById('twofa-success').style.display = 'block';
+                    document.getElementById('2fa-btn').style.display = 'none';
+                } else {
+                    alert(data.message);
+                }
+            }
+        }
+
+        async function confirm2FA() {
+            const otp = document.getElementById('twofa-otp').value.trim();
+            const errorMsg = document.getElementById('twofa-error');
+            const successMsg = document.getElementById('twofa-success');
+
+            if (otp.length !== 6) {
+                errorMsg.textContent = 'Please enter the 6-digit code';
+                errorMsg.style.display = 'block';
+                return;
+            }
+
+            const res = await fetch('/api/auth/confirm-2fa', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + token
+                },
+                body: JSON.stringify({ otp })
+            });
+            const data = await res.json();
+
+            if (res.ok) {
+                const updated = { ...userData, mfa_enabled: true };
+                localStorage.setItem('user', JSON.stringify(updated));
+                successMsg.textContent = data.message;
+                successMsg.style.display = 'block';
+                errorMsg.style.display = 'none';
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                errorMsg.textContent = data.message;
+                errorMsg.style.display = 'block';
+                successMsg.style.display = 'none';
+            }
+        }
+
         function logout() {
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             window.location.href = '/login';
         }
     </script>
+    <script>
+function toggleSidebar() {
+    document.querySelector('.sidebar').classList.toggle('open');
+    document.getElementById('sidebar-overlay').classList.toggle('open');
+}
+function closeSidebar() {
+    document.querySelector('.sidebar').classList.remove('open');
+    document.getElementById('sidebar-overlay').classList.remove('open');
+}
+</script>
 </body>
 </html>

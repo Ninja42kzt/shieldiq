@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShieldIQ - Admin Panel</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+<body class="dash-body">
+    <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+    <aside class="sidebar">
+        <div class="sidebar-logo">🛡️ ShieldIQ</div>
+        <nav class="sidebar-nav">
+            <a href="/dashboard" class="nav-item"><span>📊</span> Dashboard</a>
+            <a href="/admin" class="nav-item active"><span>🔧</span> Admin Panel</a>
+            <a href="/quiz" class="nav-item"><span>🎯</span> Training</a>
+            <a href="/leaderboard" class="nav-item"><span>🏆</span> Leaderboard</a>
+            <a href="/settings" class="nav-item"><span>⚙️</span> Settings</a>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar" id="user-avatar">A</div>
+                <div class="user-details">
+                    <span class="user-name" id="user-name">Loading...</span>
+                    <span class="user-company" id="user-company">Loading...</span>
+                </div>
+            </div>
+            <button class="logout-btn" onclick="logout()">↩ Logout</button>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <header class="dash-header">
+            <div>
+                <h1>Admin Panel 🔧</h1>
+                <p id="company-subtitle">Company overview and team management</p>
+            </div>
+            <div class="header-actions">
+                <button class="btn-primary" onclick="window.location.href='/pricing'">Upgrade Plan</button>
+            </div>
+        </header>
+
+        <!-- Company Stats -->
+        <section class="stats-grid" style="margin-bottom:32px">
+            <div class="stat-card">
+                <div class="stat-icon">👥</div>
+                <div class="stat-info">
+                    <span class="stat-value" id="total-users">0</span>
+                    <span class="stat-label">Total Employees</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">✅</div>
+                <div class="stat-info">
+                    <span class="stat-value" id="active-users">0</span>
+                    <span class="stat-label">Completed Training</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">⭐</div>
+                <div class="stat-info">
+                    <span class="stat-value" id="company-avg">0%</span>
+                    <span class="stat-label">Company Avg Score</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🛡️</div>
+                <div class="stat-info">
+                    <span class="stat-value" id="risk-summary">-</span>
+                    <span class="stat-label">Overall Risk</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Risk Breakdown + Weak Areas row -->
+        <div class="admin-two-col">
+
+            <!-- Risk Breakdown -->
+            <div class="admin-card">
+                <h2>Risk Breakdown</h2>
+                <div class="risk-bars" id="risk-bars">
+                    <div class="risk-row">
+                        <span class="risk-label low">🟢 Low Risk</span>
+                        <div class="risk-bar-wrap"><div class="risk-bar-fill low" id="bar-low" style="width:0%"></div></div>
+                        <span class="risk-count" id="count-low">0</span>
+                    </div>
+                    <div class="risk-row">
+                        <span class="risk-label medium">🟡 Medium Risk</span>
+                        <div class="risk-bar-wrap"><div class="risk-bar-fill medium" id="bar-medium" style="width:0%"></div></div>
+                        <span class="risk-count" id="count-medium">0</span>
+                    </div>
+                    <div class="risk-row">
+                        <span class="risk-label high">🔴 High Risk</span>
+                        <div class="risk-bar-wrap"><div class="risk-bar-fill high" id="bar-high" style="width:0%"></div></div>
+                        <span class="risk-count" id="count-high">0</span>
+                    </div>
+                    <div class="risk-row">
+                        <span class="risk-label unknown">⚪ Not Started</span>
+                        <div class="risk-bar-wrap"><div class="risk-bar-fill unknown" id="bar-unknown" style="width:0%"></div></div>
+                        <span class="risk-count" id="count-unknown">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Weak Areas -->
+            <div class="admin-card">
+                <h2>Top Weak Areas</h2>
+                <div id="weak-areas-list">
+                    <div class="admin-empty">Loading...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- User List -->
+        <div class="admin-card" style="margin-top:24px">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px">
+                <h2>Team Members</h2>
+                <input type="text" id="search-users" placeholder="Search by name or email..."
+                    oninput="filterUsers(this.value)"
+                    style="background:var(--glass); border:1px solid var(--glass-border); border-radius:8px; padding:8px 14px; color:var(--text); font-size:13px; width:220px; outline:none" />
+            </div>
+
+            <div class="admin-table-wrap">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Modules</th>
+                            <th>Avg Score</th>
+                            <th>Risk Level</th>
+                            <th>Weak Areas</th>
+                            <th>Last Active</th>
+                            <th>Plan</th>
+                        </tr>
+                    </thead>
+                    <tbody id="users-tbody">
+                        <tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:40px">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        const token = localStorage.getItem('token');
+        if (!token) window.location.href = '/login';
+
+        const userData = JSON.parse(localStorage.getItem('user') || '{}');
+        if (userData.role !== 'admin' && userData.role !== 'superadmin') {
+            window.location.href = '/dashboard';
+        }
+
+        document.getElementById('user-name').textContent = userData.name || 'Admin';
+        document.getElementById('user-company').textContent = userData.company || 'Company';
+        document.getElementById('user-avatar').textContent = (userData.name || 'A')[0].toUpperCase();
+        document.getElementById('company-subtitle').textContent = `${userData.company || 'Company'} — overview and team management`;
+
+        let allUsers = [];
+
+        async function loadAdminData() {
+            const headers = { 'Authorization': `Bearer ${token}` };
+
+            // Load stats
+            try {
+                const res = await fetch('/api/admin/stats', { headers });
+                const stats = await res.json();
+                document.getElementById('total-users').textContent = stats.totalUsers;
+                document.getElementById('active-users').textContent = stats.activeUsers;
+                document.getElementById('company-avg').textContent = stats.avgScore + '%';
+
+                const rb = stats.riskBreakdown;
+                const total = stats.totalUsers || 1;
+                const overallRisk = rb.high > rb.low ? 'High' : rb.medium > rb.low ? 'Medium' : 'Low';
+                document.getElementById('risk-summary').textContent = overallRisk;
+
+                // Risk bars
+                ['low','medium','high','unknown'].forEach(level => {
+                    const count = rb[level] || 0;
+                    document.getElementById(`count-${level}`).textContent = count;
+                    document.getElementById(`bar-${level}`).style.width = Math.round((count / total) * 100) + '%';
+                });
+            } catch(e) { console.error('Stats error', e); }
+
+            // Load weak areas
+            try {
+                const res = await fetch('/api/admin/weak-areas', { headers });
+                const areas = await res.json();
+                const list = document.getElementById('weak-areas-list');
+                if (areas.length === 0) {
+                    list.innerHTML = '<div class="admin-empty">No data yet — employees need to complete modules</div>';
+                } else {
+                    const max = areas[0]?.count || 1;
+                    list.innerHTML = areas.slice(0, 6).map((a, i) => `
+                        <div class="weak-area-row">
+                            <div style="display:flex; justify-content:space-between; margin-bottom:4px">
+                                <span style="font-size:13px; font-weight:500">${a.area}</span>
+                                <span style="font-size:12px; color:var(--text-muted)">${a.count} mistake${a.count !== 1 ? 's' : ''}</span>
+                            </div>
+                            <div style="height:6px; background:rgba(255,255,255,0.05); border-radius:3px; overflow:hidden">
+                                <div style="height:100%; width:${Math.round((a.count/max)*100)}%; background:${i === 0 ? '#ff6b6b' : i === 1 ? '#ff9f0a' : '#00D4FF'}; border-radius:3px; transition:width 0.8s ease"></div>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch(e) {}
+
+            // Load users
+            try {
+                const res = await fetch('/api/admin/users', { headers });
+                allUsers = await res.json();
+                renderUsers(allUsers);
+            } catch(e) {}
+        }
+
+        function renderUsers(users) {
+            const tbody = document.getElementById('users-tbody');
+            if (users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:40px">No employees found</td></tr>';
+                return;
+            }
+            tbody.innerHTML = users.map(u => {
+                const riskColor = u.riskLevel === 'Low' ? '#34c759' : u.riskLevel === 'Medium' ? '#ff9f0a' : u.riskLevel === 'High' ? '#ff6b6b' : 'var(--text-muted)';
+                const lastActive = u.lastActive
+                    ? new Date(u.lastActive).toLocaleDateString('en-KE', { day:'numeric', month:'short', year:'numeric' })
+                    : 'Never';
+                const weakStr = u.topWeakAreas?.length > 0
+                    ? u.topWeakAreas.slice(0,2).map(a => `<span class="weak-tag">${a}</span>`).join('')
+                    : '<span style="color:var(--text-muted); font-size:12px">None</span>';
+                return `
+                <tr>
+                    <td>
+                        <div style="font-weight:600; font-size:13px">${u.name}</div>
+                        <div style="color:var(--text-muted); font-size:11px">${u.email}</div>
+                    </td>
+                    <td style="text-align:center">${u.modulesDone}</td>
+                    <td style="text-align:center; font-weight:700; color:${riskColor}">${u.avgScore !== null ? u.avgScore + '%' : '—'}</td>
+                    <td><span class="risk-badge" style="color:${riskColor}; background:${riskColor}22">${u.riskLevel}</span></td>
+                    <td>${weakStr}</td>
+                    <td style="color:var(--text-muted); font-size:12px">${lastActive}</td>
+                    <td><span class="plan-badge ${u.plan === 'pro' ? 'pro' : 'free'}">${u.plan === 'pro' ? '⭐ Pro' : 'Free'}</span></td>
+                </tr>`;
+            }).join('');
+        }
+
+        function filterUsers(q) {
+            const filtered = allUsers.filter(u =>
+                u.name.toLowerCase().includes(q.toLowerCase()) ||
+                u.email.toLowerCase().includes(q.toLowerCase())
+            );
+            renderUsers(filtered);
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = '/login';
+        }
+
+        loadAdminData();
+    </script>
+    <script>
+function toggleSidebar() {
+    document.querySelector('.sidebar').classList.toggle('open');
+    document.getElementById('sidebar-overlay').classList.toggle('open');
+}
+function closeSidebar() {
+    document.querySelector('.sidebar').classList.remove('open');
+    document.getElementById('sidebar-overlay').classList.remove('open');
+}
+</script>
+</body>
+</html>

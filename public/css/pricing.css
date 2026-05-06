@@ -1,0 +1,224 @@
+.pricing-page {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 120px 24px 60px;
+}
+
+.pricing-header {
+    text-align: center;
+    margin-bottom: 56px;
+}
+
+.pricing-header h1 {
+    font-size: 48px;
+    font-weight: 800;
+    margin: 16px 0 12px;
+    background: linear-gradient(135deg, #fff 0%, var(--primary) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.pricing-header p {
+    font-size: 16px;
+    color: var(--text-muted);
+}
+
+.pricing-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 48px;
+}
+
+.pricing-card {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 24px;
+    padding: 36px 32px;
+    position: relative;
+    transition: all 0.3s;
+}
+
+.pricing-card.pro {
+    background: rgba(0,212,255,0.05);
+    border-color: rgba(0,212,255,0.4);
+    transform: scale(1.02);
+}
+
+.plan-badge-top {
+    position: absolute;
+    top: -14px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--primary);
+    color: #000;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 16px;
+    border-radius: 20px;
+    white-space: nowrap;
+}
+
+.plan-name {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 12px;
+}
+
+.plan-price {
+    margin-bottom: 12px;
+}
+
+.price-amount {
+    font-size: 48px;
+    font-weight: 800;
+    color: var(--primary);
+}
+
+.price-period {
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+.plan-desc {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.5;
+    margin-bottom: 28px;
+    min-height: 40px;
+}
+
+.plan-features {
+    list-style: none;
+    margin-bottom: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.plan-features li {
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.plan-features .excluded {
+    color: var(--text-muted);
+    opacity: 0.5;
+}
+
+.plan-features .pro-feature {
+    color: var(--primary);
+    font-weight: 500;
+}
+
+.plan-btn {
+    width: 100%;
+    padding: 14px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.3s;
+}
+
+.plan-btn.free {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    color: var(--text);
+}
+
+.plan-btn.free:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.plan-btn.pro {
+    background: var(--primary);
+    color: #000;
+}
+
+.plan-btn.pro:hover {
+    background: var(--primary-dark);
+    transform: translateY(-1px);
+}
+
+.pro-gate-note {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    background: rgba(0,212,255,0.05);
+    border: 1px solid rgba(0,212,255,0.2);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 56px;
+}
+
+.gate-icon {
+    font-size: 36px;
+    flex-shrink: 0;
+}
+
+.pro-gate-note strong {
+    display: block;
+    font-size: 15px;
+    color: var(--primary);
+    margin-bottom: 8px;
+}
+
+.pro-gate-note p {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.6;
+}
+
+.faq-section h2 {
+    font-size: 28px;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 32px;
+}
+
+.faq-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.faq-item {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 24px;
+}
+
+.faq-item h3 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 8px;
+}
+
+.faq-item p {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.6;
+}
+
+@media (max-width: 768px) {
+    .pricing-grid {
+        grid-template-columns: 1fr;
+    }
+    .pricing-card.pro {
+        transform: none;
+        order: -1;
+    }
+    .pricing-header h1 {
+        font-size: 32px;
+    }
+    .faq-grid {
+        grid-template-columns: 1fr;
+    }
+}

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register Company - ShieldIQ</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/auth.css">
+</head>
+<body class="auth-body">
+    <div class="auth-bg"></div>
+
+    <nav>
+        <div class="logo">🛡️ ShieldIQ</div>
+        <div class="nav-links">
+            <a href="/">Home</a>
+            <a href="/login" class="btn-outline">Login</a>
+        </div>
+    </nav>
+
+    <div class="auth-container">
+        <div class="auth-card">
+
+            <!-- Step 1: Company form -->
+            <div id="step-form">
+                <div class="auth-header">
+                    <div class="auth-icon">🏢</div>
+                    <h1>Register Your Company</h1>
+                    <p>Set up your organisation's ShieldIQ account</p>
+                </div>
+
+                <div id="error-msg" class="alert alert-error" style="display:none"></div>
+                <div id="success-msg" class="alert alert-success" style="display:none"></div>
+
+                <div class="auth-form">
+                    <div class="form-group">
+                        <label>Company Name</label>
+                        <input type="text" id="companyName" placeholder="Acme Ltd" />
+                    </div>
+                    <div class="form-group">
+                        <label>Your Full Name (Admin)</label>
+                        <input type="text" id="adminName" placeholder="John Doe" />
+                    </div>
+                    <div class="form-group">
+                        <label>Work Email</label>
+                        <input type="email" id="email" placeholder="you@company.com" />
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <div class="input-wrapper">
+                            <input type="password" id="password" placeholder="Min 8 characters" />
+                            <span class="toggle-pass" onclick="togglePass()">👁️</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Confirm Password</label>
+                        <input type="password" id="confirm-password" placeholder="••••••••" />
+                    </div>
+                    <button class="btn-primary full" onclick="handleCompanyRegister()">
+                        Create Company Account →
+                    </button>
+                    <p class="auth-switch">
+                        Just an employee? <a href="/register">Register here</a>
+                    </p>
+                    <p class="auth-switch" style="margin-top:8px">
+                        Already have an account? <a href="/login">Login</a>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Step 2: Verify email -->
+            <div id="step-verify" style="display:none">
+                <div class="auth-header">
+                    <div class="auth-icon">📧</div>
+                    <h1>Verify Your Email</h1>
+                    <p id="verify-subtitle">We sent a 6-digit code to your email</p>
+                </div>
+                <div id="v-error" class="alert alert-error" style="display:none"></div>
+                <div id="v-success" class="alert alert-success" style="display:none"></div>
+                <div class="auth-form">
+                    <div class="form-group">
+                        <label>Verification Code</label>
+                        <input type="text" id="verify-code" placeholder="000000" maxlength="6"
+                            style="letter-spacing:8px; text-align:center; font-size:24px; font-weight:700"
+                            oninput="this.value = this.value.replace(/[^0-9]/g, '')" />
+                    </div>
+                    <button class="btn-primary full" onclick="verifyCompanyEmail()">
+                        Verify & Continue →
+                    </button>
+                    <p class="auth-switch">
+                        <a href="#" onclick="showStep1()">← Use a different email</a>
+                    </p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        let registeredEmail = '';
+
+        function togglePass() {
+            const p = document.getElementById('password');
+            p.type = p.type === 'password' ? 'text' : 'password';
+        }
+
+        function showStep1() {
+            document.getElementById('step-verify').style.display = 'none';
+            document.getElementById('step-form').style.display = 'block';
+        }
+
+        async function handleCompanyRegister() {
+            const companyName = document.getElementById('companyName').value.trim();
+            const adminName = document.getElementById('adminName').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
+            const errorMsg = document.getElementById('error-msg');
+            const successMsg = document.getElementById('success-msg');
+
+            errorMsg.style.display = 'none';
+            successMsg.style.display = 'none';
+
+            if (!companyName || !adminName || !email || !password || !confirmPassword) {
+                errorMsg.textContent = 'Please fill in all fields';
+                errorMsg.style.display = 'block';
+                return;
+            }
+            if (password !== confirmPassword) {
+                errorMsg.textContent = 'Passwords do not match';
+                errorMsg.style.display = 'block';
+                return;
+            }
+            if (password.length < 8) {
+                errorMsg.textContent = 'Password must be at least 8 characters';
+                errorMsg.style.display = 'block';
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/auth/register-company', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ companyName, adminName, email, password })
+                });
+                const data = await res.json();
+
+                if (res.ok && data.requiresVerification) {
+                    registeredEmail = email;
+                    successMsg.textContent = data.message;
+                    successMsg.style.display = 'block';
+                    setTimeout(() => {
+                        document.getElementById('step-form').style.display = 'none';
+                        document.getElementById('step-verify').style.display = 'block';
+                        document.getElementById('verify-subtitle').textContent = `We sent a 6-digit code to ${email}`;
+                    }, 800);
+                } else {
+                    errorMsg.textContent = data.message || 'Registration failed';
+                    errorMsg.style.display = 'block';
+                }
+            } catch(e) {
+                errorMsg.textContent = 'Server error. Please try again.';
+                errorMsg.style.display = 'block';
+            }
+        }
+
+        async function verifyCompanyEmail() {
+            const otp = document.getElementById('verify-code').value.trim();
+            const errorMsg = document.getElementById('v-error');
+            const successMsg = document.getElementById('v-success');
+
+            if (otp.length !== 6) {
+                errorMsg.textContent = 'Please enter the 6-digit code';
+                errorMsg.style.display = 'block';
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/auth/verify-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: registeredEmail, otp })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    successMsg.textContent = 'Company verified! Redirecting to login...';
+                    successMsg.style.display = 'block';
+                    errorMsg.style.display = 'none';
+                    setTimeout(() => window.location.href = '/login', 1500);
+                } else {
+                    errorMsg.textContent = data.message || 'Invalid code';
+                    errorMsg.style.display = 'block';
+                }
+            } catch(e) {
+                errorMsg.textContent = 'Server error. Please try again.';
+                errorMsg.style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html>
