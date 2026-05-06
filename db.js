@@ -1,9 +1,7 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 
-const dbPath = process.env.NODE_ENV === 'production'
-    ? '/data/shieldiq.db'
-    : path.join(__dirname, 'shieldiq.db');
+const dbPath = path.resolve(process.env.DB_PATH || path.join(__dirname, 'shieldiq.db'));
 
 const db = new Database(dbPath);
 
@@ -56,7 +54,13 @@ const migrations = [
     `ALTER TABLE users ADD COLUMN company_id INTEGER`,
     `ALTER TABLE companies ADD COLUMN plan TEXT DEFAULT 'free'`,
 ];
-migrations.forEach(sql => { try { db.exec(sql); } catch(e) {} });
+
+migrations.forEach(sql => { 
+    try { 
+        db.exec(sql); 
+    } catch(e) {} 
+});
 
 console.log('Database initialized at:', dbPath);
+
 module.exports = db;
