@@ -5,13 +5,15 @@ const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
     port: 465,
     secure: true,
+    logger: true,  // Logs SMTP traffic to the console
+    debug: true,   // Shows detailed error messages
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS // MUST be a 16-character App Password
     },
     connectionTimeout: 10000, 
     tls: {
-        rejectUnauthorized: false
+        rejectUnauthorized: false // Helps bypass certificate issues on hosting providers
     }
 });
 

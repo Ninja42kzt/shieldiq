@@ -9,8 +9,7 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// CRITICAL: Tells Express to trust Render's proxy headers
-// Fixes the 'X-Forwarded-For' validation error in your logs
+// Essential for Render/Proxies
 app.set('trust proxy', 1); 
 
 app.use(cors());
