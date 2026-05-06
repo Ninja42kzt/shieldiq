@@ -26,13 +26,34 @@ function initIntro() {
     document.getElementById('question-counter').textContent = `Question 1 of ${categoryData.questions.length}`;
 }
 
+function shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+}
+
 function startQuiz() {
-    questions = [...categoryData.questions];
-    weakAreas = [];
+    // Shuffle questions
+    questions = shuffle([...categoryData.questions]);
+    
+    // Shuffle options for each question while tracking correct answer
+    questions = questions.map(q => {
+        const options = q.options.map((opt, i) => ({ text: opt, isCorrect: i === q.correct }));
+        const shuffled = shuffle(options);
+        return {
+            ...q,
+            options: shuffled.map(o => o.text),
+            correct: shuffled.findIndex(o => o.isCorrect)
+        };
+    });
+
     document.getElementById('intro-screen').style.display = 'none';
     document.getElementById('quiz-screen').style.display = 'block';
     loadQuestion();
 }
+
 
 function loadQuestion() {
     const q = questions[currentQuestion];
