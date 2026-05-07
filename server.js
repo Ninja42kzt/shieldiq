@@ -79,6 +79,11 @@ const pages = [
     ['/admin', 'admin.html'],
     ['/business-trial', 'business-trial.html'],
     ['/enterprise-trial', 'enterprise-trial.html'],
+    ['/about', 'about.html'],
+    ['/contact', 'contact.html'],
+    ['/terms', 'terms.html'],
+    ['/privacy', 'privacy.html'],
+    ['/register-company', 'register-company.html'],
 ];
 
 for (const [route, file] of pages) {

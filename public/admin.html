@@ -3,140 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Panel - ShieldIQ</title>
+    <title>ShieldIQ - Admin Dashboard</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/dashboard.css">
-    <link rel="stylesheet" href="css/auth.css">
-    <style>
-        .risk-high { color: #ff6b6b; font-weight: 600; }
-        .risk-medium { color: #ff9f0a; font-weight: 600; }
-        .risk-low { color: #34c759; font-weight: 600; }
-        .risk-unknown { color: var(--text-muted); font-weight: 600; }
-
-        .admin-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 14px;
-        }
-        .admin-table th {
-            text-align: left;
-            padding: 12px 16px;
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            border-bottom: 1px solid var(--glass-border);
-        }
-        .admin-table td {
-            padding: 14px 16px;
-            border-bottom: 1px solid rgba(255,255,255,0.04);
-            vertical-align: middle;
-        }
-        .admin-table tr:hover td { background: rgba(255,255,255,0.02); }
-
-        .weak-tag {
-            display: inline-block;
-            background: rgba(255,159,10,0.1);
-            border: 1px solid rgba(255,159,10,0.2);
-            color: #ff9f0a;
-            font-size: 11px;
-            padding: 2px 8px;
-            border-radius: 10px;
-            margin: 2px;
-        }
-
-        .bar-wrap {
-            background: rgba(255,255,255,0.06);
-            border-radius: 4px;
-            height: 6px;
-            width: 100px;
-            display: inline-block;
-            vertical-align: middle;
-            margin-left: 8px;
-        }
-        .bar-fill {
-            height: 100%;
-            border-radius: 4px;
-            background: var(--primary);
-        }
-
-        .action-btn {
-            padding: 4px 12px;
-            border-radius: 6px;
-            font-size: 12px;
-            cursor: pointer;
-            border: 1px solid;
-            transition: all 0.2s;
-        }
-
-        .card-section {
-            background: var(--glass);
-            border: 1px solid var(--glass-border);
-            border-radius: 16px;
-            padding: 24px;
-            margin-bottom: 24px;
-        }
-
-        .card-section h2 {
-            font-size: 17px;
-            font-weight: 700;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .weak-area-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.04);
-            font-size: 14px;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-        .weak-area-row:last-child { border-bottom: none; }
-
-        .category-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.04);
-            font-size: 14px;
-            gap: 12px;
-        }
-        .category-row:last-child { border-bottom: none; }
-
-        .scroll-table { overflow-x: auto; }
-
-        @media (max-width: 768px) {
-            .admin-table { min-width: 600px; }
-            .card-section { padding: 16px; }
-        }
-    </style>
+    <link rel="stylesheet" href="css/admin.css">
 </head>
 <body class="dash-body">
-
-    <!-- Mobile topbar -->
-    <div class="dash-topbar">
-        <div class="logo">🛡️ ShieldIQ</div>
-        <button class="menu-btn" onclick="toggleSidebar()">☰</button>
-    </div>
-    <div class="sidebar-overlay" id="overlay" onclick="toggleSidebar()"></div>
-
-    <aside class="sidebar" id="sidebar">
-        <div class="sidebar-logo">
-            🛡️ ShieldIQ
-            <button class="sidebar-close" onclick="toggleSidebar()">✕</button>
-        </div>
+    <aside class="sidebar">
+        <div class="sidebar-logo">🛡️ ShieldIQ</div>
         <nav class="sidebar-nav">
-            <a href="/dashboard" class="nav-item"><span>📊</span> Dashboard</a>
-            <a href="/quiz" class="nav-item"><span>🎯</span> Training</a>
-            <a href="/progress" class="nav-item"><span>📈</span> My Progress</a>
-            <a href="/leaderboard" class="nav-item"><span>🏆</span> Leaderboard</a>
             <a href="/admin" class="nav-item active"><span>🔧</span> Admin Panel</a>
+            <a href="/dashboard" class="nav-item"><span>📊</span> My Dashboard</a>
+            <a href="/quiz" class="nav-item"><span>🎯</span> Training</a>
+            <a href="/leaderboard" class="nav-item"><span>🏆</span> Leaderboard</a>
             <a href="/settings" class="nav-item"><span>⚙️</span> Settings</a>
         </nav>
         <div class="sidebar-footer">
@@ -154,234 +33,196 @@
     <main class="main-content">
         <header class="dash-header">
             <div>
-                <h1>Admin Panel 🔧</h1>
-                <p id="admin-subtitle">Loading company data...</p>
+                <h1>Admin Dashboard 🔧</h1>
+                <p>Monitor your team's cybersecurity training performance</p>
+            </div>
+            <div style="display:flex;gap:12px">
+                <button class="btn-outline" onclick="exportReport()" style="cursor:pointer;padding:10px 20px;font-size:14px">📊 Export Report</button>
+                <button class="btn-primary" onclick="window.location.href='/register?invite=true'" style="border:none;cursor:pointer;padding:10px 20px;font-size:14px">+ Invite Employee</button>
             </div>
         </header>
 
-        <!-- Stats -->
-        <div class="stats-grid" id="stats-grid">
+        <!-- Company Stats -->
+        <section class="stats-grid" style="margin-bottom:32px">
             <div class="stat-card">
                 <div class="stat-icon">👥</div>
                 <div class="stat-info">
-                    <div class="stat-value" id="stat-total">—</div>
-                    <div class="stat-label">Total Employees</div>
+                    <span class="stat-value" id="total-employees">0</span>
+                    <span class="stat-label">Total Employees</span>
                 </div>
             </div>
             <div class="stat-card">
-                <div class="stat-icon">🎯</div>
+                <div class="stat-icon">✅</div>
                 <div class="stat-info">
-                    <div class="stat-value" id="stat-trained">—</div>
-                    <div class="stat-label">Trained Users</div>
+                    <span class="stat-value" id="trained-count">0</span>
+                    <span class="stat-label">Trained This Month</span>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon">📊</div>
                 <div class="stat-info">
-                    <div class="stat-value" id="stat-avg">—</div>
-                    <div class="stat-label">Avg Score</div>
+                    <span class="stat-value" id="company-avg">0%</span>
+                    <span class="stat-label">Company Average Score</span>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon">🚨</div>
                 <div class="stat-info">
-                    <div class="stat-value" id="stat-risk" style="color:#ff6b6b">—</div>
-                    <div class="stat-label">High Risk Users</div>
+                    <span class="stat-value" id="high-risk-count" style="color:#ff6b6b">0</span>
+                    <span class="stat-label">High Risk Employees</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Risk Overview -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:32px">
+
+            <!-- Risk Distribution -->
+            <div style="background:var(--glass);border:1px solid var(--glass-border);border-radius:16px;padding:24px">
+                <h2 style="font-size:18px;font-weight:700;margin-bottom:20px">Risk Distribution</h2>
+                <div id="risk-chart">
+                    <div class="risk-bar-item">
+                        <span class="risk-label">🟢 Low Risk</span>
+                        <div class="risk-bar-bg">
+                            <div class="risk-bar-fill" id="low-bar" style="background:#34c759;width:0%"></div>
+                        </div>
+                        <span class="risk-count" id="low-count">0</span>
+                    </div>
+                    <div class="risk-bar-item">
+                        <span class="risk-label">🟡 Medium Risk</span>
+                        <div class="risk-bar-bg">
+                            <div class="risk-bar-fill" id="medium-bar" style="background:#ff9f0a;width:0%"></div>
+                        </div>
+                        <span class="risk-count" id="medium-count">0</span>
+                    </div>
+                    <div class="risk-bar-item">
+                        <span class="risk-label">🔴 High Risk</span>
+                        <div class="risk-bar-bg">
+                            <div class="risk-bar-fill" id="high-bar" style="background:#ff6b6b;width:0%"></div>
+                        </div>
+                        <span class="risk-count" id="high-count">0</span>
+                    </div>
+                    <div class="risk-bar-item">
+                        <span class="risk-label">⚪ Not Started</span>
+                        <div class="risk-bar-bg">
+                            <div class="risk-bar-fill" id="none-bar" style="background:rgba(255,255,255,0.2);width:0%"></div>
+                        </div>
+                        <span class="risk-count" id="none-count">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Module Completion -->
+            <div style="background:var(--glass);border:1px solid var(--glass-border);border-radius:16px;padding:24px">
+                <h2 style="font-size:18px;font-weight:700;margin-bottom:20px">Module Completion Rate</h2>
+                <div id="module-completion">
+                    <div class="module-stat">
+                        <span>🎣 Phishing Awareness</span>
+                        <div class="mini-bar"><div class="mini-fill" id="phishing-completion" style="background:var(--primary)"></div></div>
+                        <span class="mini-pct" id="phishing-pct">0%</span>
+                    </div>
+                    <div class="module-stat">
+                        <span>🔑 Password Security</span>
+                        <div class="mini-bar"><div class="mini-fill" id="passwords-completion" style="background:var(--primary)"></div></div>
+                        <span class="mini-pct" id="passwords-pct">0%</span>
+                    </div>
+                    <div class="module-stat">
+                        <span>🧠 Social Engineering</span>
+                        <div class="mini-bar"><div class="mini-fill" id="social-completion" style="background:var(--primary)"></div></div>
+                        <span class="mini-pct" id="social-pct">0%</span>
+                    </div>
+                    <div class="module-stat">
+                        <span>💻 Device Security</span>
+                        <div class="mini-bar"><div class="mini-fill" id="devices-completion" style="background:var(--primary)"></div></div>
+                        <span class="mini-pct" id="devices-pct">0%</span>
+                    </div>
+                    <div class="module-stat">
+                        <span>🗄️ Data Protection</span>
+                        <div class="mini-bar"><div class="mini-fill" id="data-completion" style="background:var(--primary)"></div></div>
+                        <span class="mini-pct" id="data-pct">0%</span>
+                    </div>
+                    <div class="module-stat">
+                        <span>🚨 Incident Response</span>
+                        <div class="mini-bar"><div class="mini-fill" id="incident-completion" style="background:var(--primary)"></div></div>
+                        <span class="mini-pct" id="incident-pct">0%</span>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:24px">
-
-            <!-- Top Weak Areas -->
-            <div class="card-section">
-                <h2>⚠️ Top Weak Areas</h2>
-                <div id="weak-areas-list">
-                    <div style="color:var(--text-muted);font-size:14px">Loading...</div>
+        <!-- Employee Table -->
+        <div style="background:var(--glass);border:1px solid var(--glass-border);border-radius:16px;overflow:hidden;margin-bottom:32px">
+            <div style="padding:20px 24px;border-bottom:1px solid var(--glass-border);display:flex;justify-content:space-between;align-items:center">
+                <h2 style="font-size:18px;font-weight:700">Employee Overview</h2>
+                <div style="display:flex;gap:12px;align-items:center">
+                    <input type="text" id="search-input" placeholder="Search employees..." oninput="filterEmployees()" style="background:rgba(255,255,255,0.05);border:1px solid var(--glass-border);border-radius:8px;padding:8px 14px;color:var(--text);font-size:13px;outline:none;width:200px"/>
+                    <select id="risk-filter" onchange="filterEmployees()" style="background:rgba(255,255,255,0.05);border:1px solid var(--glass-border);border-radius:8px;padding:8px 14px;color:var(--text);font-size:13px;outline:none">
+                        <option value="all">All Risk Levels</option>
+                        <option value="low">Low Risk</option>
+                        <option value="medium">Medium Risk</option>
+                        <option value="high">High Risk</option>
+                        <option value="none">Not Started</option>
+                    </select>
                 </div>
             </div>
-
-            <!-- Category Scores -->
-            <div class="card-section">
-                <h2>📚 Category Performance</h2>
-                <div id="category-scores-list">
-                    <div style="color:var(--text-muted);font-size:14px">Loading...</div>
-                </div>
-            </div>
-
-        </div>
-
-        <!-- Users Table -->
-        <div class="card-section">
-            <h2>👤 Team Members</h2>
-            <div id="users-error" class="alert alert-error" style="display:none"></div>
-            <div class="scroll-table">
-                <table class="admin-table">
+            <div style="overflow-x:auto">
+                <table style="width:100%;border-collapse:collapse">
                     <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Avg Score</th>
-                            <th>Modules</th>
-                            <th>Risk</th>
-                            <th>Weak Areas</th>
-                            <th>Actions</th>
+                        <tr style="border-bottom:1px solid var(--glass-border)">
+                            <th style="padding:14px 24px;text-align:left;font-size:12px;color:var(--text-muted);font-weight:600;letter-spacing:0.5px">EMPLOYEE</th>
+                            <th style="padding:14px 24px;text-align:left;font-size:12px;color:var(--text-muted);font-weight:600;letter-spacing:0.5px">AVG SCORE</th>
+                            <th style="padding:14px 24px;text-align:left;font-size:12px;color:var(--text-muted);font-weight:600;letter-spacing:0.5px">MODULES</th>
+                            <th style="padding:14px 24px;text-align:left;font-size:12px;color:var(--text-muted);font-weight:600;letter-spacing:0.5px">RISK LEVEL</th>
+                            <th style="padding:14px 24px;text-align:left;font-size:12px;color:var(--text-muted);font-weight:600;letter-spacing:0.5px">WEAK AREAS</th>
+                            <th style="padding:14px 24px;text-align:left;font-size:12px;color:var(--text-muted);font-weight:600;letter-spacing:0.5px">LAST ACTIVE</th>
+                            <th style="padding:14px 24px;text-align:left;font-size:12px;color:var(--text-muted);font-weight:600;letter-spacing:0.5px">ACTION</th>
                         </tr>
                     </thead>
-                    <tbody id="users-tbody">
-                        <tr><td colspan="7" style="color:var(--text-muted);text-align:center;padding:32px">Loading users...</td></tr>
+                    <tbody id="employee-tbody">
+                        <tr>
+                            <td colspan="7" style="padding:48px;text-align:center;color:var(--text-muted);font-size:14px">Loading employees...</td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
         </div>
 
+        <!-- AI Insights -->
+        <div style="background:rgba(0,212,255,0.05);border:1px solid rgba(0,212,255,0.2);border-radius:16px;padding:24px;margin-bottom:32px">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+                <span style="font-size:28px">🤖</span>
+                <div>
+                    <div style="font-size:18px;font-weight:700;color:var(--primary)">AI Security Insights</div>
+                    <div style="font-size:13px;color:var(--text-muted)">Powered by ShieldIQ neural network analysis</div>
+                </div>
+            </div>
+            <div id="ai-insights" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">
+                <div class="insight-card">
+                    <div class="insight-icon">🎯</div>
+                    <div class="insight-text">
+                        <strong>Top Vulnerability</strong>
+                        <p id="top-vulnerability">Analysing team data...</p>
+                    </div>
+                </div>
+                <div class="insight-card">
+                    <div class="insight-icon">📈</div>
+                    <div class="insight-text">
+                        <strong>Recommended Action</strong>
+                        <p id="recommended-action">Loading recommendations...</p>
+                    </div>
+                </div>
+                <div class="insight-card">
+                    <div class="insight-icon">🏆</div>
+                    <div class="insight-text">
+                        <strong>Top Performer</strong>
+                        <p id="top-performer">Calculating...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </main>
 
-    <script>
-        const token = localStorage.getItem('token');
-        if (!token) window.location.href = '/login';
-
-        const userData = JSON.parse(localStorage.getItem('user') || '{}');
-        if (userData.role !== 'admin') {
-            alert('Admin access required.');
-            window.location.href = '/dashboard';
-        }
-
-        document.getElementById('user-name').textContent = userData.name || 'Admin';
-        document.getElementById('user-company').textContent = userData.company || '';
-        document.getElementById('user-avatar').textContent = (userData.name || 'A')[0].toUpperCase();
-        document.getElementById('admin-subtitle').textContent = `Managing ${userData.company || 'your company'}`;
-
-        const headers = { 'Authorization': 'Bearer ' + token };
-
-        async function loadAll() {
-            await Promise.all([loadStats(), loadWeakAreas(), loadCategoryScores(), loadUsers()]);
-        }
-
-        async function loadStats() {
-            try {
-                const res = await fetch('/api/admin/stats', { headers });
-                const d = await res.json();
-                document.getElementById('stat-total').textContent = d.totalUsers ?? '—';
-                document.getElementById('stat-trained').textContent = d.trainedUsers ?? '—';
-                document.getElementById('stat-avg').textContent = d.avgScore ? d.avgScore + '%' : '—';
-                document.getElementById('stat-risk').textContent = d.highRisk ?? '—';
-            } catch(e) {}
-        }
-
-        async function loadWeakAreas() {
-            try {
-                const res = await fetch('/api/admin/weak-areas', { headers });
-                const data = await res.json();
-                const el = document.getElementById('weak-areas-list');
-                if (!data.length) {
-                    el.innerHTML = '<div style="color:var(--text-muted);font-size:14px">No data yet — users need to complete quizzes first.</div>';
-                    return;
-                }
-                const max = data[0]?.count || 1;
-                el.innerHTML = data.slice(0, 8).map(w => `
-                    <div class="weak-area-row">
-                        <span>${w.area}</span>
-                        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-                            <div class="bar-wrap"><div class="bar-fill" style="width:${Math.round((w.count/max)*100)}%;background:#ff9f0a"></div></div>
-                            <span style="font-size:12px;color:var(--text-muted)">${w.count}x</span>
-                        </div>
-                    </div>
-                `).join('');
-            } catch(e) {}
-        }
-
-        async function loadCategoryScores() {
-            try {
-                const res = await fetch('/api/admin/category-scores', { headers });
-                const data = await res.json();
-                const el = document.getElementById('category-scores-list');
-                if (!data.length) {
-                    el.innerHTML = '<div style="color:var(--text-muted);font-size:14px">No quiz data yet.</div>';
-                    return;
-                }
-                el.innerHTML = data.map(c => {
-                    const color = c.avg_score >= 80 ? '#34c759' : c.avg_score >= 60 ? '#ff9f0a' : '#ff6b6b';
-                    return `
-                    <div class="category-row">
-                        <span>${c.category}</span>
-                        <div style="display:flex;align-items:center;gap:8px">
-                            <div class="bar-wrap"><div class="bar-fill" style="width:${c.avg_score}%;background:${color}"></div></div>
-                            <span style="font-size:13px;font-weight:600;color:${color}">${c.avg_score}%</span>
-                        </div>
-                    </div>`;
-                }).join('');
-            } catch(e) {}
-        }
-
-        async function loadUsers() {
-            try {
-                const res = await fetch('/api/admin/users', { headers });
-                const users = await res.json();
-                const tbody = document.getElementById('users-tbody');
-
-                if (!users.length) {
-                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text-muted)">No employees found. Invite your team to register with your company name.</td></tr>';
-                    return;
-                }
-
-                tbody.innerHTML = users.map(u => {
-                    const riskClass = `risk-${u.riskLevel.toLowerCase().replace(' ', '-')}`;
-                    const score = u.avg_score !== null ? u.avg_score + '%' : '—';
-                    const modules = u.modules_done || 0;
-                    const weakTags = (u.weakAreas || []).slice(0, 3)
-                        .map(w => `<span class="weak-tag">${w}</span>`).join('') || '<span style="color:var(--text-muted);font-size:12px">None yet</span>';
-
-                    return `
-                    <tr>
-                        <td><strong>${u.name}</strong></td>
-                        <td style="color:var(--text-muted)">${u.email}</td>
-                        <td>${score}</td>
-                        <td>${modules}</td>
-                        <td><span class="${riskClass}">${u.riskLevel}</span></td>
-                        <td>${weakTags}</td>
-                        <td>
-                            <button class="action-btn" style="color:#34c759;border-color:rgba(52,199,89,0.3);background:rgba(52,199,89,0.08)"
-                                onclick="promoteUser(${u.id}, '${u.name}')">Promote</button>
-                            <button class="action-btn" style="color:#ff6b6b;border-color:rgba(255,59,48,0.3);background:rgba(255,59,48,0.08);margin-left:4px"
-                                onclick="removeUser(${u.id}, '${u.name}')">Remove</button>
-                        </td>
-                    </tr>`;
-                }).join('');
-            } catch(e) {
-                document.getElementById('users-error').textContent = 'Failed to load users.';
-                document.getElementById('users-error').style.display = 'block';
-            }
-        }
-
-        async function promoteUser(id, name) {
-            if (!confirm(`Promote ${name} to admin?`)) return;
-            const res = await fetch(`/api/admin/promote/${id}`, { method: 'POST', headers });
-            const d = await res.json();
-            alert(d.message);
-            if (res.ok) loadUsers();
-        }
-
-        async function removeUser(id, name) {
-            if (!confirm(`Remove ${name} from your company? This cannot be undone.`)) return;
-            const res = await fetch(`/api/admin/user/${id}`, { method: 'DELETE', headers });
-            const d = await res.json();
-            alert(d.message);
-            if (res.ok) loadUsers();
-        }
-
-        function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('open');
-            document.getElementById('overlay').classList.toggle('active');
-        }
-
-        function logout() {
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            window.location.href = '/login';
-        }
-
-        loadAll();
-    </script>
+    <script src="js/admin.js"></script>
 </body>
 </html>

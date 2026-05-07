@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const db = require('../db');
+const { generateQuestions } = require('../ml/ai_quiz');
+const { getRecommendations } = require('../ml/ai_recommend');
 
 function auth(req, res, next) {
     const token = req.headers.authorization?.split(' ')[1];
@@ -104,6 +106,40 @@ router.get('/leaderboard', auth, (req, res) => {
         res.json(rankings);
     } catch (err) {
         res.status(500).json({ message: 'Error fetching leaderboard' });
+    }
+});
+
+// AI-generated questions for a module
+router.get('/ai-questions/:module', auth, async (req, res) => {
+    const { module } = req.params;
+    const count = parseInt(req.query.count) || 5;
+
+    const validModules = ['phishing', 'passwords', 'social', 'devices', 'data', 'incident'];
+    if (!validModules.includes(module)) {
+        return res.status(400).json({ message: 'Invalid module' });
+    }
+
+    try {
+        const questions = await generateQuestions(module, count);
+        res.json({ module, questions, source: 'ai', generatedAt: new Date().toISOString() });
+    } catch (err) {
+        console.error('AI quiz generation error:', err.message);
+        res.status(500).json({ message: 'Failed to generate questions. Please try again.', error: err.message });
+    }
+});
+
+// Personalised module recommendations for logged-in user
+router.get('/recommend', auth, (req, res) => {
+    try {
+        const results = db.prepare(
+            'SELECT * FROM quiz_results WHERE user_id = ? ORDER BY taken_at DESC'
+        ).all(req.user.id);
+
+        const recommendations = getRecommendations(results);
+        res.json(recommendations);
+    } catch (err) {
+        console.error('Recommendation error:', err.message);
+        res.status(500).json({ message: 'Error generating recommendations' });
     }
 });
 

@@ -1,49 +1,28 @@
-const https = require('https');
+const nodemailer = require('nodemailer');
 
 function generateOTP() {
     return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-async function sendBrevoEmail(to, name, subject, html) {
-    const data = JSON.stringify({
-        sender: { name: 'ShieldIQ', email: 'shieldiq.noreply@gmail.com' },
-        to: [{ email: to, name }],
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+    }
+});
+
+async function sendNodemailerEmail(to, name, subject, html) {
+    await transporter.sendMail({
+        from: `"ShieldIQ" <${process.env.EMAIL_USER}>`,
+        to,
         subject,
-        htmlContent: html
-    });
-
-    return new Promise((resolve, reject) => {
-        const options = {
-            hostname: 'api.brevo.com',
-            path: '/v3/smtp/email',
-            method: 'POST',
-            headers: {
-                'api-key': process.env.BREVO_API_KEY,
-                'Content-Type': 'application/json',
-                'Content-Length': Buffer.byteLength(data)
-            }
-        };
-
-        const req = https.request(options, (res) => {
-            let body = '';
-            res.on('data', chunk => body += chunk);
-            res.on('end', () => {
-                if (res.statusCode >= 200 && res.statusCode < 300) {
-                    resolve(body);
-                } else {
-                    reject(new Error(`Brevo error: ${res.statusCode} ${body}`));
-                }
-            });
-        });
-
-        req.on('error', reject);
-        req.write(data);
-        req.end();
+        html
     });
 }
 
 async function sendVerificationEmail(to, name, otp) {
-    await sendBrevoEmail(to, name, 'Verify your ShieldIQ account', `
+    await sendNodemailerEmail(to, name, 'Verify your ShieldIQ account', `
         <div style="font-family:sans-serif;max-width:500px;margin:0 auto;padding:32px;background:#0A0A0F;color:#fff;border-radius:16px">
             <h1 style="color:#00D4FF">🛡️ ShieldIQ</h1>
             <h2>Welcome, ${name}!</h2>
@@ -62,7 +41,7 @@ async function sendOTPEmail(to, name, otp, purpose = 'login') {
         login: 'Your ShieldIQ login code',
         reset: 'Reset your ShieldIQ password'
     };
-    await sendBrevoEmail(to, name, subjects[purpose] || 'Your ShieldIQ code', `
+    await sendNodemailerEmail(to, name, subjects[purpose] || 'Your ShieldIQ code', `
         <div style="font-family:sans-serif;max-width:500px;margin:0 auto;padding:32px;background:#0A0A0F;color:#fff;border-radius:16px">
             <h1 style="color:#00D4FF">🛡️ ShieldIQ</h1>
             <h2>Hi ${name},</h2>
