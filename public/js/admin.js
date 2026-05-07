@@ -7,36 +7,66 @@ document.getElementById('user-company').textContent = userData.company || 'Compa
 document.getElementById('user-avatar').textContent = (userData.name || 'A')[0].toUpperCase();
 
 let allEmployees = [];
-
 const moduleKeys = ['phishing', 'passwords', 'social', 'devices', 'data', 'incident'];
 
 async function loadAdminData() {
     try {
-        const res = await fetch('/api/admin/overview', {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await res.json();
+        const [statsRes, usersRes] = await Promise.all([
+            fetch('/api/admin/stats', { headers: { 'Authorization': `Bearer ${token}` } }),
+            fetch('/api/admin/users', { headers: { 'Authorization': `Bearer ${token}` } })
+        ]);
 
-        if (!res.ok) {
-            document.querySelector('.main-content').innerHTML += `
-                <div style="background:rgba(255,59,48,0.1);border:1px solid rgba(255,59,48,0.3);border-radius:12px;padding:24px;margin-top:20px;text-align:center">
-                    <div style="font-size:32px;margin-bottom:12px">🔒</div>
-                    <h3 style="color:#ff6b6b;margin-bottom:8px">Admin Access Required</h3>
-                    <p style="color:var(--text-muted);font-size:14px">You need admin privileges to view this dashboard. Contact your administrator.</p>
-                </div>`;
+        if (!statsRes.ok) {
+            loadDemoData();
             return;
         }
 
-        allEmployees = data.employees || [];
+        const stats = await statsRes.json();
+        const employees = await usersRes.json();
+
+        allEmployees = employees.map(e => ({
+            name: e.name,
+            email: e.email,
+            avg_score: e.avgScore || 0,
+            modules: e.modulesDone || 0,
+            last_active: e.lastActive,
+            weak_areas: e.topWeakAreas?.join(', ') || null
+        }));
+
+        const data = {
+            totalEmployees: stats.totalUsers,
+            trainedCount: stats.activeUsers,
+            companyAvg: stats.avgScore,
+            highRiskCount: stats.riskBreakdown.high,
+            riskDistribution: {
+                low: stats.riskBreakdown.low,
+                medium: stats.riskBreakdown.medium,
+                high: stats.riskBreakdown.high,
+                none: stats.riskBreakdown.unknown
+            },
+            moduleCompletion: calculateModuleCompletion(allEmployees),
+            employees: allEmployees
+        };
+
         renderStats(data);
         renderEmployees(allEmployees);
         renderInsights(data);
 
     } catch (err) {
         console.error('Admin load error:', err);
-        // Show demo data if API not ready
         loadDemoData();
     }
+}
+
+function calculateModuleCompletion(employees) {
+    const modules = ['phishing', 'passwords', 'social', 'devices', 'data', 'incident'];
+    const completion = {};
+    const total = employees.length || 1;
+    modules.forEach((m, i) => {
+        const done = employees.filter(e => (e.modules || 0) > i).length;
+        completion[m] = Math.round((done / total) * 100);
+    });
+    return completion;
 }
 
 function loadDemoData() {
@@ -58,7 +88,6 @@ function loadDemoData() {
             { name: 'Henry Kipchoge', email: 'henry@company.com', avg_score: 0, modules: 0, last_active: null, weak_areas: null },
         ]
     };
-
     allEmployees = demo.employees;
     renderStats(demo);
     renderEmployees(demo.employees);
@@ -71,17 +100,17 @@ function renderStats(data) {
     document.getElementById('company-avg').textContent = (data.companyAvg || 0) + '%';
     document.getElementById('high-risk-count').textContent = data.highRiskCount || 0;
 
-    // Risk bars
     const total = data.totalEmployees || 1;
     const dist = data.riskDistribution || {};
     ['low', 'medium', 'high', 'none'].forEach(level => {
         const count = dist[level] || 0;
         const pct = Math.round((count / total) * 100);
-        document.getElementById(`${level}-bar`).style.width = pct + '%';
-        document.getElementById(`${level}-count`).textContent = count;
+        const bar = document.getElementById(`${level}-bar`);
+        const countEl = document.getElementById(`${level}-count`);
+        if (bar) bar.style.width = pct + '%';
+        if (countEl) countEl.textContent = count;
     });
 
-    // Module completion
     const comp = data.moduleCompletion || {};
     moduleKeys.forEach(key => {
         const pct = comp[key] || 0;
@@ -93,7 +122,7 @@ function renderStats(data) {
 }
 
 function getRiskLevel(score, modules) {
-    if (modules === 0) return 'none';
+    if (!modules || modules === 0) return 'none';
     if (score >= 80) return 'low';
     if (score >= 60) return 'medium';
     return 'high';
@@ -113,7 +142,9 @@ function renderEmployees(employees) {
         const riskClasses = { low: 'risk-low', medium: 'risk-medium', high: 'risk-high', none: 'risk-none' };
         const scoreColor = risk === 'low' ? '#34c759' : risk === 'medium' ? '#ff9f0a' : risk === 'high' ? '#ff6b6b' : 'var(--text-muted)';
         const lastActive = emp.last_active ? new Date(emp.last_active).toLocaleDateString('en-KE', { day: 'numeric', month: 'short' }) : 'Never';
-        const weakAreas = emp.weak_areas ? emp.weak_areas.split(',').slice(0, 2).map(a => `<span style="background:rgba(255,159,10,0.1);color:#ff9f0a;padding:2px 6px;border-radius:4px;font-size:11px;margin-right:4px">${a.trim()}</span>`).join('') : '<span style="color:var(--text-muted);font-size:12px">None identified</span>';
+        const weakAreas = emp.weak_areas
+            ? emp.weak_areas.split(',').slice(0, 2).map(a => `<span style="background:rgba(255,159,10,0.1);color:#ff9f0a;padding:2px 6px;border-radius:4px;font-size:11px;margin-right:4px">${a.trim()}</span>`).join('')
+            : '<span style="color:var(--text-muted);font-size:12px">None identified</span>';
         const initials = emp.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
 
         return `
@@ -146,7 +177,6 @@ function filterEmployees() {
     const search = document.getElementById('search-input').value.toLowerCase();
     const riskFilter = document.getElementById('risk-filter').value;
     const rows = document.querySelectorAll('#employee-tbody tr[data-risk]');
-
     rows.forEach(row => {
         const name = row.dataset.name || '';
         const email = row.dataset.email || '';
@@ -172,15 +202,21 @@ function renderInsights(data) {
         : 'Complete more modules for analysis';
 
     const highRisk = employees.filter(e => getRiskLevel(e.avg_score, e.modules) === 'high');
+    const notStarted = employees.filter(e => !e.modules || e.modules === 0);
+
     document.getElementById('recommended-action').textContent = highRisk.length > 0
-        ? `${highRisk.length} employee${highRisk.length > 1 ? 's' : ''} need immediate training. Send reminders to high-risk team members.`
-        : employees.filter(e => e.modules === 0).length > 0
-        ? `${employees.filter(e => e.modules === 0).length} employee${employees.filter(e => e.modules === 0).length > 1 ? 's' : ''} haven't started training yet.`
+        ? `${highRisk.length} employee${highRisk.length > 1 ? 's' : ''} need immediate training. Send reminders now.`
+        : notStarted.length > 0
+        ? `${notStarted.length} employee${notStarted.length > 1 ? 's' : ''} haven't started training yet.`
         : 'Great job! Your team is well trained. Keep up the momentum.';
 }
 
 function getWorstModule(completion) {
-    const modules = { phishing: '🎣 Phishing', passwords: '🔑 Passwords', social: '🧠 Social Engineering', devices: '💻 Device Security', data: '🗄️ Data Protection', incident: '🚨 Incident Response' };
+    const modules = {
+        phishing: '🎣 Phishing', passwords: '🔑 Passwords',
+        social: '🧠 Social Engineering', devices: '💻 Device Security',
+        data: '🗄️ Data Protection', incident: '🚨 Incident Response'
+    };
     let worst = null, worstPct = 101;
     Object.entries(completion).forEach(([key, pct]) => {
         if (pct < worstPct) { worstPct = pct; worst = modules[key]; }
