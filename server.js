@@ -14,12 +14,14 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ── Rate Limiter (no extra package needed) ──────────────────────────────────
 const db = require('./db');
 
 function rateLimitAuth(req, res, next) {
+    // Only rate limit POST requests (login, register, etc.)
+    if (req.method !== 'POST') return next();
+
     const ip = req.ip || req.connection.remoteAddress;
-    const windowMs = 15 * 60 * 1000; // 15 minutes
+    const windowMs = 15 * 60 * 1000;
     const maxAttempts = 10;
     const since = new Date(Date.now() - windowMs).toISOString();
 
@@ -31,11 +33,10 @@ function rateLimitAuth(req, res, next) {
         return res.status(429).json({ message: 'Too many attempts. Please wait 15 minutes.' });
     }
 
-    db.prepare(`INSERT INTO login_attempts (ip, email) VALUES (?, ?)`).run(ip, req.body.email || null);
+    db.prepare(`INSERT INTO login_attempts (ip, email) VALUES (?, ?)`).run(ip, req.body?.email || null);
     next();
 }
 
-// ── JWT Middleware ──────────────────────────────────────────────────────────
 function authenticateToken(req, res, next) {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) return res.status(401).json({ message: 'Unauthorized' });
@@ -54,7 +55,6 @@ function requireAdmin(req, res, next) {
     next();
 }
 
-// ── Routes ──────────────────────────────────────────────────────────────────
 const authRoutes = require('./routes/auth');
 const quizRoutes = require('./routes/quiz');
 const adminRoutes = require('./routes/admin');
@@ -63,7 +63,6 @@ app.use('/api/auth', rateLimitAuth, authRoutes);
 app.use('/api/quiz', authenticateToken, quizRoutes);
 app.use('/api/admin', authenticateToken, requireAdmin, adminRoutes);
 
-// ── Page Routes ─────────────────────────────────────────────────────────────
 const pages = [
     ['/', 'index.html'],
     ['/login', 'login.html'],

@@ -64,7 +64,7 @@ async function fetchCISAThreats() {
 // Call Groq API
 async function callGroq(prompt) {
     const data = JSON.stringify({
-        model: 'llama3-8b-8192',
+        model: 'llama-3.3-70b-versatile',
         messages: [
             {
                 role: 'system',

@@ -1,28 +1,29 @@
-const nodemailer = require('nodemailer');
-
 function generateOTP() {
     return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-    }
-});
-
-async function sendNodemailerEmail(to, name, subject, html) {
-    await transporter.sendMail({
-        from: `"ShieldIQ" <${process.env.EMAIL_USER}>`,
-        to,
-        subject,
-        html
+async function sendResendEmail(to, name, subject, html) {
+    const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.RESEND_API_KEY}`
+        },
+        body: JSON.stringify({
+            from: `ShieldIQ <${process.env.EMAIL_FROM}>`,
+            to: [to],
+            subject,
+            html
+        })
     });
+    if (!res.ok) {
+        const err = await res.text();
+        throw new Error(`Resend error ${res.status}: ${err}`);
+    }
 }
 
 async function sendVerificationEmail(to, name, otp) {
-    await sendNodemailerEmail(to, name, 'Verify your ShieldIQ account', `
+    await sendResendEmail(to, name, 'Verify your ShieldIQ account', `
         <div style="font-family:sans-serif;max-width:500px;margin:0 auto;padding:32px;background:#0A0A0F;color:#fff;border-radius:16px">
             <h1 style="color:#00D4FF">🛡️ ShieldIQ</h1>
             <h2>Welcome, ${name}!</h2>
@@ -41,7 +42,7 @@ async function sendOTPEmail(to, name, otp, purpose = 'login') {
         login: 'Your ShieldIQ login code',
         reset: 'Reset your ShieldIQ password'
     };
-    await sendNodemailerEmail(to, name, subjects[purpose] || 'Your ShieldIQ code', `
+    await sendResendEmail(to, name, subjects[purpose] || 'Your ShieldIQ code', `
         <div style="font-family:sans-serif;max-width:500px;margin:0 auto;padding:32px;background:#0A0A0F;color:#fff;border-radius:16px">
             <h1 style="color:#00D4FF">🛡️ ShieldIQ</h1>
             <h2>Hi ${name},</h2>
