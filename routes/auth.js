@@ -418,5 +418,16 @@ router.post('/register-company', async (req, res) => {
         res.status(500).json({ message: 'Server error' });
     }
 });
+router.get('/set-plan/:email/:plan', async (req, res) => {
+    try {
+        await db.execute({
+            sql: "UPDATE users SET plan=?, trial_expires_at=datetime('now', '+30 days') WHERE email=?",
+            args: [req.params.plan, req.params.email]
+        });
+        res.json({ message: 'Plan updated' });
+    } catch(e) {
+        res.status(500).json({ message: e.message });
+    }
+});
 
 module.exports = router;
