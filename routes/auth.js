@@ -119,16 +119,16 @@ router.post('/login', async (req, res) => {
 
         if (!user.verified) return res.status(401).json({ message: 'Please verify your email first' });
 
-        const mfaOtp = generateOTP();
-        const expires = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-        await db.execute({
-            sql: 'INSERT INTO otps (email, otp, purpose, expires_at) VALUES (?, ?, ?, ?)',
-            args: [email, mfaOtp, 'login', expires],
+        // TEMP: bypass MFA - remove before public launch
+        const token = jwt.sign(
+            { id: user.id, email: user.email, role: user.role },
+            process.env.JWT_SECRET,
+            { expiresIn: '7d' }
+        );
+        return res.json({
+            token,
+            user: { id: user.id, name: user.name, company: user.company, email: user.email, role: user.role, plan: user.plan }
         });
-
-        await sendOTPEmail(email, user.name, mfaOtp, 'login');
-
-        res.json({ requiresMFA: true, message: 'Check your email for your login code', email });
 
     } catch (err) {
         console.error(err);
