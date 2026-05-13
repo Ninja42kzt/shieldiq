@@ -16,17 +16,18 @@ function auth(req, res, next) {
     }
 }
 
-// Save quiz result — now properly saves weak_areas
-router.post('/result', auth, (req, res) => {
+// Save quiz result
+router.post('/result', auth, async (req, res) => {
     const { category, score, total, correct, weakAreas } = req.body;
     try {
         const weakAreasJson = weakAreas && weakAreas.length > 0
             ? JSON.stringify(weakAreas)
             : null;
 
-        db.prepare(
-            'INSERT INTO quiz_results (user_id, category, score, weak_areas) VALUES (?, ?, ?, ?)'
-        ).run(req.user.id, category, score, weakAreasJson);
+        await db.execute({
+            sql: 'INSERT INTO quiz_results (user_id, category, score, weak_areas) VALUES (?, ?, ?, ?)',
+            args: [req.user.id, category, score, weakAreasJson],
+        });
 
         res.json({ message: 'Result saved' });
     } catch (err) {
@@ -36,38 +37,43 @@ router.post('/result', auth, (req, res) => {
 });
 
 // Get user results
-router.get('/results', auth, (req, res) => {
+router.get('/results', auth, async (req, res) => {
     try {
-        const results = db.prepare(
-            'SELECT * FROM quiz_results WHERE user_id = ? ORDER BY taken_at DESC'
-        ).all(req.user.id);
-        res.json(results);
+        const result = await db.execute({
+            sql: 'SELECT * FROM quiz_results WHERE user_id = ? ORDER BY taken_at DESC',
+            args: [req.user.id],
+        });
+        res.json(result.rows);
     } catch (err) {
+        console.error(err);
         res.status(500).json({ message: 'Error fetching results' });
     }
 });
 
 // Get user stats
-router.get('/stats', auth, (req, res) => {
+router.get('/stats', auth, async (req, res) => {
     try {
-        const results = db.prepare('SELECT * FROM quiz_results WHERE user_id = ?').all(req.user.id);
+        const result = await db.execute({
+            sql: 'SELECT * FROM quiz_results WHERE user_id = ?',
+            args: [req.user.id],
+        });
+        const results = result.rows;
+
         const modulesDone = results.length;
         const avgScore = modulesDone > 0
             ? Math.round(results.reduce((sum, r) => sum + r.score, 0) / modulesDone)
             : 0;
 
-        // Collect all weak areas across all quizzes
         const allWeakAreas = [];
         results.forEach(r => {
             if (r.weak_areas) {
                 try {
                     const parsed = JSON.parse(r.weak_areas);
                     if (Array.isArray(parsed)) allWeakAreas.push(...parsed);
-                } catch(e) {}
+                } catch (e) {}
             }
         });
 
-        // Count frequency of each weak area
         const weakAreaCounts = {};
         allWeakAreas.forEach(area => {
             weakAreaCounts[area] = (weakAreaCounts[area] || 0) + 1;
@@ -86,25 +92,28 @@ router.get('/stats', auth, (req, res) => {
 
         res.json({ modulesDone, avgScore, riskLevel, topWeakAreas });
     } catch (err) {
+        console.error(err);
         res.status(500).json({ message: 'Error fetching stats' });
     }
 });
 
 // Leaderboard
-router.get('/leaderboard', auth, (req, res) => {
+router.get('/leaderboard', auth, async (req, res) => {
     try {
-        const rankings = db.prepare(`
-            SELECT u.name, u.company,
-                   ROUND(AVG(q.score)) as avg_score,
-                   COUNT(q.id) as modules
-            FROM users u
-            JOIN quiz_results q ON u.id = q.user_id
-            GROUP BY u.id
-            ORDER BY avg_score DESC
-            LIMIT 20
-        `).all();
-        res.json(rankings);
+        const result = await db.execute({
+            sql: `SELECT u.name, u.company,
+                         ROUND(AVG(q.score)) as avg_score,
+                         COUNT(q.id) as modules
+                  FROM users u
+                  JOIN quiz_results q ON u.id = q.user_id
+                  GROUP BY u.id
+                  ORDER BY avg_score DESC
+                  LIMIT 20`,
+            args: [],
+        });
+        res.json(result.rows);
     } catch (err) {
+        console.error(err);
         res.status(500).json({ message: 'Error fetching leaderboard' });
     }
 });
@@ -128,14 +137,15 @@ router.get('/ai-questions/:module', auth, async (req, res) => {
     }
 });
 
-// Personalised module recommendations for logged-in user
-router.get('/recommend', auth, (req, res) => {
+// Personalised module recommendations
+router.get('/recommend', auth, async (req, res) => {
     try {
-        const results = db.prepare(
-            'SELECT * FROM quiz_results WHERE user_id = ? ORDER BY taken_at DESC'
-        ).all(req.user.id);
+        const result = await db.execute({
+            sql: 'SELECT * FROM quiz_results WHERE user_id = ? ORDER BY taken_at DESC',
+            args: [req.user.id],
+        });
 
-        const recommendations = getRecommendations(results);
+        const recommendations = getRecommendations(result.rows);
         res.json(recommendations);
     } catch (err) {
         console.error('Recommendation error:', err.message);

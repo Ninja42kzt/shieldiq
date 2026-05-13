@@ -16,8 +16,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const db = require('./db');
 
-function rateLimitAuth(req, res, next) {
-    // Only rate limit POST requests (login, register, etc.)
+async function rateLimitAuth(req, res, next) {
     if (req.method !== 'POST') return next();
 
     const ip = req.ip || req.connection.remoteAddress;
@@ -25,16 +24,27 @@ function rateLimitAuth(req, res, next) {
     const maxAttempts = 10;
     const since = new Date(Date.now() - windowMs).toISOString();
 
-    const attempts = db.prepare(
-        `SELECT COUNT(*) as count FROM login_attempts WHERE ip = ? AND attempted_at > ?`
-    ).get(ip, since);
+    try {
+        const result = await db.execute({
+            sql: `SELECT COUNT(*) as count FROM login_attempts WHERE ip = ? AND attempted_at > ?`,
+            args: [ip, since],
+        });
+        const count = result.rows[0].count;
 
-    if (attempts.count >= maxAttempts) {
-        return res.status(429).json({ message: 'Too many attempts. Please wait 15 minutes.' });
+        if (count >= maxAttempts) {
+            return res.status(429).json({ message: 'Too many attempts. Please wait 15 minutes.' });
+        }
+
+        await db.execute({
+            sql: `INSERT INTO login_attempts (ip, email) VALUES (?, ?)`,
+            args: [ip, req.body?.email || null],
+        });
+
+        next();
+    } catch (err) {
+        console.error('Rate limit error:', err);
+        next(); // fail open so a DB hiccup doesn't lock out all users
     }
-
-    db.prepare(`INSERT INTO login_attempts (ip, email) VALUES (?, ?)`).run(ip, req.body?.email || null);
-    next();
 }
 
 function authenticateToken(req, res, next) {
