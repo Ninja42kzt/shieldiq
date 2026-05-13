@@ -364,4 +364,59 @@ router.get('/force-verify/:email', async (req, res) => {
     }
 });
 
+// Register Company (Admin)
+router.post('/register-company', async (req, res) => {
+    const { companyName, adminName, email, password } = req.body;
+
+    if (!companyName || !adminName || !email || !password) {
+        return res.status(400).json({ message: 'All fields are required' });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        return res.status(400).json({ message: 'Invalid email address' });
+    }
+
+    if (password.length < 8) {
+        return res.status(400).json({ message: 'Password must be at least 8 characters' });
+    }
+
+    try {
+        const existing = await db.execute({
+            sql: 'SELECT id FROM users WHERE email = ?',
+            args: [email],
+        });
+        if (existing.rows.length > 0) {
+            return res.status(400).json({ message: 'Email already registered' });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        await db.execute({
+            sql: `INSERT INTO users (name, company, email, password, verified, role, plan, trial_expires_at)
+                  VALUES (?, ?, ?, ?, 0, 'admin', 'free', NULL)`,
+            args: [adminName, companyName, email, hashedPassword],
+        });
+
+        const otp = generateOTP();
+        const expires = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+        await db.execute({
+            sql: 'INSERT INTO otps (email, otp, purpose, expires_at) VALUES (?, ?, ?, ?)',
+            args: [email, otp, 'verify', expires],
+        });
+
+        await sendVerificationEmail(email, adminName, otp);
+
+        res.status(201).json({
+            message: 'Company account created! Check your email for your verification code.',
+            requiresVerification: true,
+            email,
+        });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 module.exports = router;
