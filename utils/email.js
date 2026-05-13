@@ -1,29 +1,23 @@
+const nodemailer = require('nodemailer');
+
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+    }
+});
+
 function generateOTP() {
     return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-async function sendResendEmail(to, name, subject, html) {
-    const res = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.RESEND_API_KEY}`
-        },
-        body: JSON.stringify({
-            from: `ShieldIQ <${process.env.EMAIL_FROM}>`,
-            to: [to],
-            subject,
-            html
-        })
-    });
-    if (!res.ok) {
-        const err = await res.text();
-        throw new Error(`Resend error ${res.status}: ${err}`);
-    }
-}
-
 async function sendVerificationEmail(to, name, otp) {
-    await sendResendEmail(to, name, 'Verify your ShieldIQ account', `
+    await transporter.sendMail({
+        from: `ShieldIQ <${process.env.EMAIL_USER}>`,
+        to,
+        subject: 'Verify your ShieldIQ account',
+        html: `
         <div style="font-family:sans-serif;max-width:500px;margin:0 auto;padding:32px;background:#0A0A0F;color:#fff;border-radius:16px">
             <h1 style="color:#00D4FF">🛡️ ShieldIQ</h1>
             <h2>Welcome, ${name}!</h2>
@@ -33,8 +27,8 @@ async function sendVerificationEmail(to, name, otp) {
             </div>
             <p style="color:#999">Expires in <strong style="color:#fff">10 minutes</strong>.</p>
             <p style="color:#666;font-size:12px">If you didn't create a ShieldIQ account, ignore this email.</p>
-        </div>
-    `);
+        </div>`
+    });
 }
 
 async function sendOTPEmail(to, name, otp, purpose = 'login') {
@@ -42,7 +36,11 @@ async function sendOTPEmail(to, name, otp, purpose = 'login') {
         login: 'Your ShieldIQ login code',
         reset: 'Reset your ShieldIQ password'
     };
-    await sendResendEmail(to, name, subjects[purpose] || 'Your ShieldIQ code', `
+    await transporter.sendMail({
+        from: `ShieldIQ <${process.env.EMAIL_USER}>`,
+        to,
+        subject: subjects[purpose] || 'Your ShieldIQ code',
+        html: `
         <div style="font-family:sans-serif;max-width:500px;margin:0 auto;padding:32px;background:#0A0A0F;color:#fff;border-radius:16px">
             <h1 style="color:#00D4FF">🛡️ ShieldIQ</h1>
             <h2>Hi ${name},</h2>
@@ -52,8 +50,8 @@ async function sendOTPEmail(to, name, otp, purpose = 'login') {
             </div>
             <p style="color:#999">Expires in <strong style="color:#fff">10 minutes</strong>.</p>
             <p style="color:#666;font-size:12px">If you didn't request this, secure your account immediately.</p>
-        </div>
-    `);
+        </div>`
+    });
 }
 
 module.exports = { generateOTP, sendVerificationEmail, sendOTPEmail };
