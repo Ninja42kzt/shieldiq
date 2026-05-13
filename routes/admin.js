@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
-const db = require('../db');
+const { db } = require("../db");
 
 function adminAuth(req, res, next) {
     const token = req.headers.authorization?.split(' ')[1];

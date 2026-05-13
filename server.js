@@ -14,36 +14,27 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-const db = require('./db');
+const { db, initDB } = require('./db');
 
 async function rateLimitAuth(req, res, next) {
     if (req.method !== 'POST') return next();
-
     const ip = req.ip || req.connection.remoteAddress;
-    const windowMs = 15 * 60 * 1000;
-    const maxAttempts = 10;
-    const since = new Date(Date.now() - windowMs).toISOString();
-
+    const since = new Date(Date.now() - 15 * 60 * 1000).toISOString();
     try {
         const result = await db.execute({
-            sql: `SELECT COUNT(*) as count FROM login_attempts WHERE ip = ? AND attempted_at > ?`,
+            sql: 'SELECT COUNT(*) as count FROM login_attempts WHERE ip = ? AND attempted_at > ?',
             args: [ip, since],
         });
-        const count = result.rows[0].count;
-
-        if (count >= maxAttempts) {
+        if (result.rows[0].count >= 10)
             return res.status(429).json({ message: 'Too many attempts. Please wait 15 minutes.' });
-        }
-
         await db.execute({
-            sql: `INSERT INTO login_attempts (ip, email) VALUES (?, ?)`,
+            sql: 'INSERT INTO login_attempts (ip, email) VALUES (?, ?)',
             args: [ip, req.body?.email || null],
         });
-
         next();
     } catch (err) {
         console.error('Rate limit error:', err);
-        next(); // fail open so a DB hiccup doesn't lock out all users
+        next();
     }
 }
 
@@ -59,9 +50,8 @@ function authenticateToken(req, res, next) {
 }
 
 function requireAdmin(req, res, next) {
-    if (req.user?.role !== 'admin') {
+    if (req.user?.role !== 'admin')
         return res.status(403).json({ message: 'Admin access required' });
-    }
     next();
 }
 
@@ -74,31 +64,23 @@ app.use('/api/quiz', authenticateToken, quizRoutes);
 app.use('/api/admin', authenticateToken, requireAdmin, adminRoutes);
 
 const pages = [
-    ['/', 'index.html'],
-    ['/login', 'login.html'],
-    ['/register', 'register.html'],
-    ['/verify', 'verify.html'],
-    ['/forgot-password', 'forgot-password.html'],
-    ['/dashboard', 'dashboard.html'],
-    ['/quiz', 'quiz.html'],
-    ['/progress', 'progress.html'],
-    ['/leaderboard', 'leaderboard.html'],
-    ['/settings', 'settings.html'],
-    ['/pricing', 'pricing.html'],
-    ['/admin', 'admin.html'],
-    ['/business-trial', 'business-trial.html'],
-    ['/enterprise-trial', 'enterprise-trial.html'],
-    ['/about', 'about.html'],
-    ['/contact', 'contact.html'],
-    ['/terms', 'terms.html'],
-    ['/privacy', 'privacy.html'],
-    ['/register-company', 'register-company.html'],
+    ['/', 'index.html'], ['/login', 'login.html'], ['/register', 'register.html'],
+    ['/verify', 'verify.html'], ['/forgot-password', 'forgot-password.html'],
+    ['/dashboard', 'dashboard.html'], ['/quiz', 'quiz.html'], ['/progress', 'progress.html'],
+    ['/leaderboard', 'leaderboard.html'], ['/settings', 'settings.html'],
+    ['/pricing', 'pricing.html'], ['/admin', 'admin.html'],
+    ['/business-trial', 'business-trial.html'], ['/enterprise-trial', 'enterprise-trial.html'],
+    ['/about', 'about.html'], ['/contact', 'contact.html'], ['/terms', 'terms.html'],
+    ['/privacy', 'privacy.html'], ['/register-company', 'register-company.html'],
 ];
 
 for (const [route, file] of pages) {
     app.get(route, (req, res) => res.sendFile(path.join(__dirname, 'public', file)));
 }
 
-app.listen(PORT, () => {
-    console.log(`ShieldIQ running on http://localhost:${PORT}`);
+initDB().then(() => {
+    app.listen(PORT, () => console.log(`ShieldIQ running on http://localhost:${PORT}`));
+}).catch(err => {
+    console.error('Failed to initialize DB:', err);
+    process.exit(1);
 });
