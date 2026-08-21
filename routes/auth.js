@@ -58,7 +58,12 @@ router.post('/register', async (req, res) => {
             args: [email, otp, 'verify', expires],
         });
 
-        await sendVerificationEmail(email, name, otp);
+        console.log(`[DEV] Verification OTP for ${email}: ${otp}`);
+        try {
+            await sendVerificationEmail(email, name, otp);
+        } catch (emailErr) {
+            console.error('Email send failed (non-blocking):', emailErr.message);
+        }
 
         res.status(201).json({
             message: 'Account created! Check your email for your verification code.',
@@ -128,7 +133,12 @@ router.post('/login', async (req, res) => {
             sql: 'INSERT INTO otps (email, otp, purpose, expires_at) VALUES (?, ?, ?, ?)',
             args: [email, mfaOtp, 'login', expires],
         });
-        await sendOTPEmail(email, user.name, mfaOtp, 'login');
+        console.log(`[DEV] Login OTP for ${email}: ${mfaOtp}`);
+        try {
+            await sendOTPEmail(email, user.name, mfaOtp, 'login');
+        } catch (emailErr) {
+            console.error('Email send failed (non-blocking):', emailErr.message);
+        }
 
         res.json({ requiresMFA: true, message: 'Check your email for your login code', email });
 
@@ -239,7 +249,12 @@ router.post('/forgot-password', async (req, res) => {
             sql: 'INSERT INTO otps (email, otp, purpose, expires_at) VALUES (?, ?, ?, ?)',
             args: [email, otp, 'reset', expires],
         });
-        await sendOTPEmail(email, user.name, otp, 'reset');
+        console.log(`[DEV] Reset OTP for ${email}: ${otp}`);
+        try {
+            await sendOTPEmail(email, user.name, otp, 'reset');
+        } catch (emailErr) {
+            console.error('Email send failed (non-blocking):', emailErr.message);
+        }
 
         res.json({ message: 'If that email exists, a reset code has been sent.', email });
     } catch (err) {

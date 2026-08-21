@@ -22,6 +22,7 @@
     "glob": "^10.5.0",
     "jsonwebtoken": "^9.0.3",
     "nodemailer": "^8.0.7",
+    "resend": "^6.21.0",
     "simple-git": "^3.36.0",
     "sqlite3": "^6.0.1",
     "uuid": "^9.0.1",
