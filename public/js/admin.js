@@ -6,6 +6,12 @@ document.getElementById('user-name').textContent = userData.name || 'Admin';
 document.getElementById('user-company').textContent = userData.company || 'Company';
 document.getElementById('user-avatar').textContent = (userData.name || 'A')[0].toUpperCase();
 
+// Admins who are also IT department get the full CodeGuard console link.
+if ((userData.department || '').toLowerCase() === 'it') {
+    const cgNav = document.getElementById('nav-codeguard');
+    if (cgNav) cgNav.style.display = 'flex';
+}
+
 let allEmployees = [];
 const moduleKeys = ['phishing', 'passwords', 'social', 'devices', 'data', 'incident'];
 
@@ -250,3 +256,57 @@ function logout() {
 }
 
 loadAdminData();
+loadCodeGuardSummary();
+
+// Admin gets risk score + recommended fixes only — the API itself
+// strips the raw vulnerability list for non-IT/admin callers, but we
+// also don't render anything IT-specific here (no file paths, etc).
+async function loadCodeGuardSummary() {
+    const locked = document.getElementById('codeguard-locked');
+    const empty = document.getElementById('codeguard-empty');
+    const summaryEl = document.getElementById('codeguard-summary');
+
+    try {
+        const listRes = await fetch('/api/it/scans', { headers: { 'Authorization': `Bearer ${token}` } });
+        if (listRes.status === 403) {
+            locked.style.display = 'block';
+            return;
+        }
+        if (!listRes.ok) return;
+
+        const { scans } = await listRes.json();
+        const latestComplete = (scans || []).find(s => s.status === 'complete');
+        if (!latestComplete) {
+            empty.style.display = 'block';
+            return;
+        }
+
+        const detailRes = await fetch(`/api/it/scans/${latestComplete.id}`, { headers: { 'Authorization': `Bearer ${token}` } });
+        if (!detailRes.ok) return;
+        const { scan } = await detailRes.json();
+
+        const summary = typeof scan.summary === 'string' ? JSON.parse(scan.summary) : scan.summary;
+        const recommendations = typeof scan.recommendations === 'string' ? JSON.parse(scan.recommendations) : (scan.recommendations || []);
+
+        document.getElementById('cg-risk-score').textContent = scan.risk_score ?? '—';
+        document.getElementById('cg-critical').textContent = summary?.critical ?? 0;
+        document.getElementById('cg-high').textContent = summary?.high ?? 0;
+        document.getElementById('cg-medium').textContent = summary?.medium ?? 0;
+        document.getElementById('cg-low').textContent = summary?.low ?? 0;
+
+        const recEl = document.getElementById('cg-recommendations');
+        recEl.innerHTML = recommendations.length ? recommendations.map(r => `
+            <div class="insight-card" style="margin-bottom:10px">
+                <div class="insight-icon">${r.priority === 'critical' ? '🚨' : r.priority === 'high' ? '⚠️' : 'ℹ️'}</div>
+                <div class="insight-text">
+                    <strong>${r.title}</strong>
+                    <p>${r.description || ''}</p>
+                </div>
+            </div>
+        `).join('') : '<p style="color:var(--text-muted)">No recommendations for the latest scan.</p>';
+
+        summaryEl.style.display = 'block';
+    } catch (err) {
+        console.error('CodeGuard summary load error:', err);
+    }
+}

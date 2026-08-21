@@ -1,3 +1,13 @@
+// Auto-redirect if already logged in with valid token
+(function() {
+    const t = localStorage.getItem('token');
+    const exp = localStorage.getItem('token_expiry');
+    const u = JSON.parse(localStorage.getItem('user') || '{}');
+    if (t && exp && Date.now() < parseInt(exp)) {
+        window.location.href = u.role === 'admin' ? '/admin' : '/dashboard';
+    }
+})();
+
 function togglePass() {
     const pass = document.getElementById('password');
     pass.type = pass.type === 'password' ? 'text' : 'password';
@@ -6,6 +16,7 @@ function togglePass() {
 async function handleLogin() {
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
+    const rememberMe = document.getElementById('remember-me')?.checked;
     const errorMsg = document.getElementById('error-msg');
     const successMsg = document.getElementById('success-msg');
 
@@ -36,10 +47,12 @@ async function handleLogin() {
         if (response.ok && data.token) {
             localStorage.setItem('token', data.token);
             localStorage.setItem('user', JSON.stringify(data.user));
+            localStorage.setItem('token_expiry', Date.now() + (30 * 24 * 60 * 60 * 1000));
             successMsg.textContent = 'Login successful! Redirecting...';
             successMsg.style.display = 'block';
             errorMsg.style.display = 'none';
-            setTimeout(() => window.location.href = '/dashboard', 1500);
+            const redirect = data.user.role === 'admin' ? '/admin' : '/dashboard';
+            setTimeout(() => window.location.href = redirect, 1500);
         } else {
             errorMsg.textContent = data.message || 'Invalid credentials';
             errorMsg.style.display = 'block';
@@ -88,7 +101,8 @@ async function verifyMFA(email, password) {
             successMsg.textContent = 'Login successful! Redirecting...';
             successMsg.style.display = 'block';
             errorMsg.style.display = 'none';
-            setTimeout(() => window.location.href = '/dashboard', 1500);
+            const dest = data.user.role === 'admin' ? '/admin' : '/dashboard';
+            setTimeout(() => window.location.href = dest, 1500);
         } else {
             errorMsg.textContent = data.message || 'Invalid code';
             errorMsg.style.display = 'block';
@@ -105,19 +119,11 @@ async function handleRegister() {
     const company = document.getElementById('company').value;
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
-    const confirmPassword = document.getElementById('confirm-password').value;
     const errorMsg = document.getElementById('error-msg');
     const successMsg = document.getElementById('success-msg');
 
-    if (!name || !company || !email || !password || !confirmPassword) {
+    if (!name || !company || !email || !password) {
         errorMsg.textContent = 'Please fill in all fields';
-        errorMsg.style.display = 'block';
-        successMsg.style.display = 'none';
-        return;
-    }
-
-    if (password !== confirmPassword) {
-        errorMsg.textContent = 'Passwords do not match';
         errorMsg.style.display = 'block';
         successMsg.style.display = 'none';
         return;

@@ -13,9 +13,10 @@
         <div class="sidebar-logo">🛡️ ShieldIQ</div>
         <nav class="sidebar-nav">
             <a href="/admin" class="nav-item active"><span>🔧</span> Admin Panel</a>
-            <a href="/dashboard" class="nav-item"><span>📊</span> My Dashboard</a>
+            <a href="/dashboard?from=admin" class="nav-item" onclick="adminViewDashboard(event)"><span>📊</span> My Dashboard</a>
             <a href="/quiz" class="nav-item"><span>🎯</span> Training</a>
             <a href="/leaderboard" class="nav-item"><span>🏆</span> Leaderboard</a>
+            <a href="/it-scan" class="nav-item" id="nav-codeguard" style="display:none"><span>🔍</span> CodeGuard</a>
             <a href="/settings" class="nav-item"><span>⚙️</span> Settings</a>
         </nav>
         <div class="sidebar-footer">
@@ -184,6 +185,35 @@
                         </tr>
                     </tbody>
                 </table>
+            </div>
+        </div>
+
+        <!-- CodeGuard: risk score + recommended fixes only (Enterprise) -->
+        <div style="background:var(--glass);border:1px solid var(--glass-border);border-radius:16px;padding:24px;margin-bottom:32px">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+                <span style="font-size:28px">🔍</span>
+                <div>
+                    <div style="font-size:18px;font-weight:700">Code Security (CodeGuard)</div>
+                    <div style="font-size:13px;color:var(--text-muted)">Latest scan risk score and recommended fixes. Full scan detail is managed by IT.</div>
+                </div>
+            </div>
+            <div id="codeguard-locked" style="display:none;text-align:center;padding:24px">
+                <p style="color:var(--text-muted);margin-bottom:12px">CodeGuard is an Enterprise plan feature.</p>
+                <a href="/pricing" style="color:var(--primary);font-weight:600;text-decoration:none">Upgrade to Enterprise →</a>
+            </div>
+            <div id="codeguard-empty" style="display:none;color:var(--text-muted);font-size:14px">
+                No scans yet. Your IT department can run one from the CodeGuard console.
+            </div>
+            <div id="codeguard-summary" style="display:none">
+                <div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:20px">
+                    <div><span class="stat-value" id="cg-risk-score" style="font-size:28px">0</span><div class="stat-label">Risk Score</div></div>
+                    <div><span class="stat-value" id="cg-critical" style="font-size:28px;color:#ff6b6b">0</span><div class="stat-label">Critical</div></div>
+                    <div><span class="stat-value" id="cg-high" style="font-size:28px;color:#ff9f0a">0</span><div class="stat-label">High</div></div>
+                    <div><span class="stat-value" id="cg-medium" style="font-size:28px;color:#ffd60a">0</span><div class="stat-label">Medium</div></div>
+                    <div><span class="stat-value" id="cg-low" style="font-size:28px;color:#34c759">0</span><div class="stat-label">Low</div></div>
+                </div>
+                <h3 style="font-size:15px;font-weight:700;margin-bottom:12px">Recommended fixes</h3>
+                <div id="cg-recommendations"></div>
             </div>
         </div>
 

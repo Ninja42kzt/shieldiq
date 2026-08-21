@@ -58,10 +58,16 @@ function requireAdmin(req, res, next) {
 const authRoutes = require('./routes/auth');
 const quizRoutes = require('./routes/quiz');
 const adminRoutes = require('./routes/admin');
+const itScanRoutes = require('./routes/itScan');
 
 app.use('/api/auth', rateLimitAuth, authRoutes);
 app.use('/api/quiz', authenticateToken, quizRoutes);
 app.use('/api/admin', authenticateToken, requireAdmin, adminRoutes);
+// itScanRoutes does its own auth (IT department + Enterprise plan for
+// scanning/full detail, Admin gets a risk+fixes-only view), so it isn't
+// wrapped in authenticateToken/requireAdmin here — avoids double JWT
+// verification and lets it apply its own department/plan rules.
+app.use('/api/it', itScanRoutes);
 
 const pages = [
     ['/', 'index.html'], ['/login', 'login.html'], ['/register', 'register.html'],
@@ -71,7 +77,8 @@ const pages = [
     ['/pricing', 'pricing.html'], ['/admin', 'admin.html'],
     ['/business-trial', 'business-trial.html'], ['/enterprise-trial', 'enterprise-trial.html'],
     ['/about', 'about.html'], ['/contact', 'contact.html'], ['/terms', 'terms.html'],
-    ['/privacy', 'privacy.html'], ['/register-company', 'register-company.html'],
+    ['/privacy', 'privacy.html'], ['/register-company', 'register-company.html'], ['/training', 'training.html'],
+    ['/it-scan', 'it-scan.html'],
 ];
 
 for (const [route, file] of pages) {

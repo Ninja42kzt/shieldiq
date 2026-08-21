@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShieldIQ - CodeGuard</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/admin.css">
+    <style>
+        .cg-form { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 28px; }
+        .cg-form .form-group { flex: 1; min-width: 220px; margin: 0; }
+        .cg-form label { display:block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+        .cg-form input, .cg-form select {
+            width: 100%; padding: 10px 12px; border-radius: 8px; background: var(--glass);
+            border: 1px solid var(--glass-border); color: var(--text); font-size: 14px;
+        }
+        .scan-table { width: 100%; border-collapse: collapse; }
+        .scan-table th { text-align: left; padding: 12px 16px; font-size: 12px; color: var(--text-muted); border-bottom: 1px solid var(--glass-border); }
+        .scan-status { display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; }
+        .status-running { background: rgba(255,159,10,0.15); color:#ff9f0a; }
+        .status-complete { background: rgba(52,199,89,0.15); color:#34c759; }
+        .status-failed { background: rgba(255,59,48,0.15); color:#ff6b6b; }
+        .vuln-item { border: 1px solid var(--glass-border); border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; background: rgba(255,255,255,0.02); }
+        .vuln-item .sev { font-size:11px; font-weight:700; text-transform:uppercase; padding:2px 8px; border-radius:6px; margin-right:8px; }
+        .sev-critical { background: rgba(255,59,48,0.2); color:#ff6b6b; }
+        .sev-high { background: rgba(255,159,10,0.2); color:#ff9f0a; }
+        .sev-medium { background: rgba(255,214,10,0.2); color:#ffd60a; }
+        .sev-low { background: rgba(52,199,89,0.2); color:#34c759; }
+        .upgrade-gate { text-align:center; padding: 60px 20px; }
+        .upgrade-gate .icon { font-size: 48px; margin-bottom: 16px; }
+        .locked-gate { text-align:center; padding: 60px 20px; }
+        #scan-detail { display:none; margin-top: 24px; }
+        .modules-section { margin-bottom: 28px; }
+    </style>
+</head>
+<body class="dash-body">
+    <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+    <aside class="sidebar">
+        <div class="sidebar-logo">🛡️ ShieldIQ</div>
+        <nav class="sidebar-nav">
+            <a href="/dashboard" class="nav-item"><span>📊</span> Dashboard</a>
+            <a href="/quiz" class="nav-item"><span>🎯</span> Training</a>
+            <a href="/progress" class="nav-item"><span>📈</span> My Progress</a>
+            <a href="/leaderboard" class="nav-item"><span>🏆</span> Leaderboard</a>
+            <a href="/it-scan" class="nav-item active"><span>🔍</span> CodeGuard</a>
+            <a href="/settings" class="nav-item"><span>⚙️</span> Settings</a>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar" id="user-avatar">U</div>
+                <div class="user-details">
+                    <span class="user-name" id="user-name">Loading...</span>
+                    <span class="user-company" id="user-company">Loading...</span>
+                </div>
+            </div>
+            <button class="logout-btn" onclick="logout()">↩ Logout</button>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <header class="dash-header">
+            <div>
+                <h1>CodeGuard 🔍</h1>
+                <p>IT department code security scanning</p>
+            </div>
+        </header>
+
+        <div id="cg-locked" class="locked-gate" style="display:none">
+            <div class="icon">🔒</div>
+            <h2>IT department only</h2>
+            <p style="color:var(--text-muted);max-width:420px;margin:8px auto 0">
+                CodeGuard scanning is restricted to members of the IT / Security department.
+                If this should be you, ask your company admin to update your department in settings.
+            </p>
+        </div>
+
+        <div id="cg-upgrade" class="upgrade-gate" style="display:none">
+            <div class="icon">✨</div>
+            <h2>CodeGuard is an Enterprise feature</h2>
+            <p style="color:var(--text-muted);max-width:420px;margin:8px auto 20px">
+                Automated code security scanning with risk scoring and fix recommendations is available on the Enterprise plan.
+            </p>
+            <a href="/pricing" class="btn-primary" style="display:inline-block;padding:10px 24px;text-decoration:none;border-radius:8px">View Enterprise Plan</a>
+        </div>
+
+        <div id="cg-content" style="display:none">
+            <section class="modules-section">
+                <h2>Run a new scan</h2>
+                <div class="cg-form">
+                    <div class="form-group">
+                        <label>GitHub repository URL</label>
+                        <input type="text" id="repo-url" placeholder="https://github.com/org/repo">
+                    </div>
+                    <div class="form-group" style="max-width:160px">
+                        <label>Branch</label>
+                        <input type="text" id="repo-branch" placeholder="main" value="main">
+                    </div>
+                    <button class="btn-primary" style="padding:10px 22px;white-space:nowrap" onclick="startScan()">Scan Repository</button>
+                </div>
+                <div id="scan-msg" style="font-size:13px;color:var(--text-muted);margin-top:-14px;margin-bottom:14px"></div>
+            </section>
+
+            <section class="modules-section">
+                <h2>Scan history</h2>
+                <div style="overflow-x:auto">
+                    <table class="scan-table">
+                        <thead>
+                            <tr><th>Repository</th><th>Branch</th><th>Status</th><th>Risk Score</th><th>Started</th><th></th></tr>
+                        </thead>
+                        <tbody id="scan-rows">
+                            <tr><td colspan="6" style="padding:16px;color:var(--text-muted)">Loading scans...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="scan-detail">
+                <h2 id="detail-title">Scan detail</h2>
+                <div id="detail-summary" style="margin-bottom:20px"></div>
+                <h3 style="margin-bottom:12px">Vulnerabilities</h3>
+                <div id="detail-vulns"></div>
+            </section>
+        </div>
+    </main>
+
+    <script src="js/it-scan.js"></script>
+</body>
+</html>

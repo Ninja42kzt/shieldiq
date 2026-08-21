@@ -1,0 +1,20 @@
+{"level":"info","message":"Cloning repository: https://github.com/OWASP/NodeGoat to /home/blackheart/Projects/shieldiq/services/codeguard/temp/OWASP_NodeGoat_c6d9798c-415a-46bb-9992-eba52d7ab44d","timestamp":"2026-08-21 10:43:00"}
+{"level":"warn","message":"Branch 'main' not found, cloning default branch","timestamp":"2026-08-21 10:43:01"}
+{"level":"info","message":"Repository cloned successfully. Size: 3.78 MB","timestamp":"2026-08-21 10:43:03"}
+{"level":"info","message":"Starting security analysis for: /home/blackheart/Projects/shieldiq/services/codeguard/temp/OWASP_NodeGoat_c6d9798c-415a-46bb-9992-eba52d7ab44d","timestamp":"2026-08-21 10:43:03"}
+{"level":"info","message":"Scanning directory: /home/blackheart/Projects/shieldiq/services/codeguard/temp/OWASP_NodeGoat_c6d9798c-415a-46bb-9992-eba52d7ab44d","timestamp":"2026-08-21 10:43:03"}
+{"level":"info","message":"Found 57 files to analyze","timestamp":"2026-08-21 10:43:03"}
+{"level":"info","message":"Found 57 files to analyze","timestamp":"2026-08-21 10:43:03"}
+{"level":"info","message":"Successfully read 57 files","timestamp":"2026-08-21 10:43:03"}
+{"level":"info","message":"Analysis completed in 266ms. Found 61 vulnerabilities","timestamp":"2026-08-21 10:43:03"}
+{"level":"info","message":"Cleaned up repository: /home/blackheart/Projects/shieldiq/services/codeguard/temp/OWASP_NodeGoat_c6d9798c-415a-46bb-9992-eba52d7ab44d","timestamp":"2026-08-21 10:43:03"}
+{"level":"info","message":"Cloning repository: https://github.com/expressjs/express to /home/blackheart/Projects/shieldiq/services/codeguard/temp/expressjs_express_3a18c78a-d940-45e1-9349-ba5123c2321b","timestamp":"2026-08-21 10:44:10"}
+{"level":"warn","message":"Branch 'main' not found, cloning default branch","timestamp":"2026-08-21 10:44:12"}
+{"level":"info","message":"Repository cloned successfully. Size: 0.90 MB","timestamp":"2026-08-21 10:44:14"}
+{"level":"info","message":"Starting security analysis for: /home/blackheart/Projects/shieldiq/services/codeguard/temp/expressjs_express_3a18c78a-d940-45e1-9349-ba5123c2321b","timestamp":"2026-08-21 10:44:14"}
+{"level":"info","message":"Scanning directory: /home/blackheart/Projects/shieldiq/services/codeguard/temp/expressjs_express_3a18c78a-d940-45e1-9349-ba5123c2321b","timestamp":"2026-08-21 10:44:14"}
+{"level":"info","message":"Found 142 files to analyze","timestamp":"2026-08-21 10:44:14"}
+{"level":"info","message":"Found 142 files to analyze","timestamp":"2026-08-21 10:44:14"}
+{"level":"info","message":"Successfully read 142 files","timestamp":"2026-08-21 10:44:14"}
+{"level":"info","message":"Analysis completed in 185ms. Found 153 vulnerabilities","timestamp":"2026-08-21 10:44:14"}
+{"level":"info","message":"Cleaned up repository: /home/blackheart/Projects/shieldiq/services/codeguard/temp/expressjs_express_3a18c78a-d940-45e1-9349-ba5123c2321b","timestamp":"2026-08-21 10:44:14"}

@@ -26,6 +26,9 @@
             <a href="/leaderboard" class="nav-item">
                 <span>🏆</span> Leaderboard
             </a>
+            <a href="/it-scan" class="nav-item" id="nav-codeguard" style="display:none">
+                <span>🔍</span> CodeGuard
+            </a>
             <a href="/settings" class="nav-item">
                 <span>⚙️</span> Settings
             </a>
@@ -91,7 +94,7 @@
         </section>
 
         <!-- Personalised Recommendations -->
-        <section class="modules-section">
+        <section class="modules-section" id="recommend-section">
             <h2>Recommended for You</h2>
             <div id="recommend-list" style="min-height:48px">
                 <p style="color:var(--text-muted);font-size:14px">Loading recommendations...</p>
@@ -101,7 +104,7 @@
         <!-- Training Modules -->
         <section class="modules-section">
             <h2>Training Modules</h2>
-            <div class="modules-grid">
+            <div class="modules-grid" id="modules-grid">
                 <div class="module-card" onclick="window.location.href='/quiz?cat=phishing'">
                     <div class="module-icon">🎣</div>
                     <div class="module-info">

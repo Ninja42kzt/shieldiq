@@ -61,6 +61,20 @@
                         <option value="admin">IT Admin (setting up for my company)</option>
                     </select>
                 </div>
+                <div class="form-group">
+                    <label>Department</label>
+                    <select id="department">
+                        <option value="general">General</option>
+                        <option value="it">IT / Security</option>
+                        <option value="hr">HR</option>
+                        <option value="finance">Finance</option>
+                        <option value="operations">Operations</option>
+                        <option value="sales">Sales</option>
+                    </select>
+                    <small style="display:block;margin-top:6px;color:var(--text-muted);font-size:12px">
+                        IT / Security department members get access to CodeGuard code scanning (Enterprise plan).
+                    </small>
+                </div>
                 <button class="btn-primary full" onclick="handleRegister()">
                     Create Account →
                 </button>
@@ -107,6 +121,7 @@
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
             const role = document.getElementById('role').value;
+            const department = document.getElementById('department').value;
             const errorMsg = document.getElementById('error-msg');
             const successMsg = document.getElementById('success-msg');
 
@@ -126,7 +141,7 @@
                 const res = await fetch('/api/auth/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, company, email, password, role })
+                    body: JSON.stringify({ name, company, email, password, role, department })
                 });
 
                 const data = await res.json();
