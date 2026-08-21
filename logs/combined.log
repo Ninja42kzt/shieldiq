@@ -18,3 +18,13 @@
 {"level":"info","message":"Successfully read 142 files","timestamp":"2026-08-21 10:44:14"}
 {"level":"info","message":"Analysis completed in 185ms. Found 153 vulnerabilities","timestamp":"2026-08-21 10:44:14"}
 {"level":"info","message":"Cleaned up repository: /home/blackheart/Projects/shieldiq/services/codeguard/temp/expressjs_express_3a18c78a-d940-45e1-9349-ba5123c2321b","timestamp":"2026-08-21 10:44:14"}
+{"level":"info","message":"Cloning repository: https://github.com/expressjs/express to /home/blackheart/Projects/shieldiq/services/codeguard/temp/expressjs_express_ba63deb5-6773-490a-927f-5fe6889e0374","timestamp":"2026-08-21 12:25:11"}
+{"level":"warn","message":"Branch 'main' not found, cloning default branch","timestamp":"2026-08-21 12:25:12"}
+{"level":"info","message":"Repository cloned successfully. Size: 0.90 MB","timestamp":"2026-08-21 12:25:13"}
+{"level":"info","message":"Starting security analysis for: /home/blackheart/Projects/shieldiq/services/codeguard/temp/expressjs_express_ba63deb5-6773-490a-927f-5fe6889e0374","timestamp":"2026-08-21 12:25:13"}
+{"level":"info","message":"Scanning directory: /home/blackheart/Projects/shieldiq/services/codeguard/temp/expressjs_express_ba63deb5-6773-490a-927f-5fe6889e0374","timestamp":"2026-08-21 12:25:13"}
+{"level":"info","message":"Found 142 files to analyze","timestamp":"2026-08-21 12:25:13"}
+{"level":"info","message":"Found 142 files to analyze","timestamp":"2026-08-21 12:25:13"}
+{"level":"info","message":"Successfully read 142 files","timestamp":"2026-08-21 12:25:13"}
+{"level":"info","message":"Analysis completed in 220ms. Found 153 vulnerabilities","timestamp":"2026-08-21 12:25:13"}
+{"level":"info","message":"Cleaned up repository: /home/blackheart/Projects/shieldiq/services/codeguard/temp/expressjs_express_ba63deb5-6773-490a-927f-5fe6889e0374","timestamp":"2026-08-21 12:25:13"}

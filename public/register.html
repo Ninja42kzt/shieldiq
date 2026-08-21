@@ -137,6 +137,10 @@
                 errorMsg.style.display = 'block'; return;
             }
 
+            const registerBtn = document.querySelector('.auth-form .btn-primary');
+            registerBtn.disabled = true;
+            registerBtn.textContent = 'Creating account...';
+
             try {
                 const res = await fetch('/api/auth/register', {
                     method: 'POST',
@@ -157,22 +161,33 @@
                 } else {
                     errorMsg.textContent = data.message || 'Registration failed';
                     errorMsg.style.display = 'block';
+                    registerBtn.disabled = false;
+                    registerBtn.textContent = 'Create Account →';
                 }
             } catch(e) {
                 errorMsg.textContent = 'Server error. Please try again.';
                 errorMsg.style.display = 'block';
+                registerBtn.disabled = false;
+                registerBtn.textContent = 'Create Account →';
             }
         }
 
+        let verifyInFlight = false;
         async function verifyOTP() {
             const otp = document.getElementById('otp-input').value.trim();
             const errorMsg = document.getElementById('otp-error');
             const successMsg = document.getElementById('otp-success');
+            const verifyBtn = document.querySelector('#verify-modal .btn-primary');
 
             if (otp.length !== 6) {
                 errorMsg.textContent = 'Please enter the 6-digit code';
                 errorMsg.style.display = 'block'; return;
             }
+
+            if (verifyInFlight) return;
+            verifyInFlight = true;
+            verifyBtn.disabled = true;
+            verifyBtn.textContent = 'Verifying...';
 
             try {
                 const res = await fetch('/api/auth/verify-email', {
@@ -192,10 +207,16 @@
                     errorMsg.textContent = data.message || 'Invalid code';
                     errorMsg.style.display = 'block';
                     document.getElementById('otp-input').value = '';
+                    verifyInFlight = false;
+                    verifyBtn.disabled = false;
+                    verifyBtn.textContent = 'Verify & Continue →';
                 }
             } catch(e) {
                 errorMsg.textContent = 'Server error. Please try again.';
                 errorMsg.style.display = 'block';
+                verifyInFlight = false;
+                verifyBtn.disabled = false;
+                verifyBtn.textContent = 'Verify & Continue →';
             }
         }
     </script>
