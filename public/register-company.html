@@ -137,6 +137,10 @@
                 return;
             }
 
+            const registerBtn = document.querySelector('#step-form .btn-primary');
+            registerBtn.disabled = true;
+            registerBtn.textContent = 'Creating account...';
+
             try {
                 const res = await fetch('/api/auth/register-company', {
                     method: 'POST',
@@ -157,10 +161,14 @@
                 } else {
                     errorMsg.textContent = data.message || 'Registration failed';
                     errorMsg.style.display = 'block';
+                    registerBtn.disabled = false;
+                    registerBtn.textContent = 'Create Company Account →';
                 }
             } catch(e) {
                 errorMsg.textContent = 'Server error. Please try again.';
                 errorMsg.style.display = 'block';
+                registerBtn.disabled = false;
+                registerBtn.textContent = 'Create Company Account →';
             }
         }
 
@@ -174,6 +182,10 @@
                 errorMsg.style.display = 'block';
                 return;
             }
+
+            const verifyBtn = document.querySelector('#step-verify .btn-primary');
+            verifyBtn.disabled = true;
+            verifyBtn.textContent = 'Verifying...';
 
             try {
                 const res = await fetch('/api/auth/verify-email', {
@@ -191,10 +203,14 @@
                 } else {
                     errorMsg.textContent = data.message || 'Invalid code';
                     errorMsg.style.display = 'block';
+                    verifyBtn.disabled = false;
+                    verifyBtn.textContent = 'Verify & Continue →';
                 }
             } catch(e) {
                 errorMsg.textContent = 'Server error. Please try again.';
                 errorMsg.style.display = 'block';
+                verifyBtn.disabled = false;
+                verifyBtn.textContent = 'Verify & Continue →';
             }
         }
     </script>
