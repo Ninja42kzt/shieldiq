@@ -29,7 +29,9 @@ router.post('/register', async (req, res) => {
 
     const isTrialSignup = plan === 'business_trial' || plan === 'enterprise_trial';
     const clientIp = req.ip;
-    if (isTrialSignup) {
+    const trialIpAllowlist = (process.env.TRIAL_IP_ALLOWLIST || '').split(',').map(s => s.trim()).filter(Boolean);
+    const ipIsAllowlisted = trialIpAllowlist.includes(clientIp);
+    if (isTrialSignup && !ipIsAllowlisted) {
         await ensureTrialIpTable();
         const prior = await db.execute({ sql: 'SELECT 1 FROM trial_signup_ips WHERE ip = ?', args: [clientIp] });
         if (prior.rows.length > 0) {
@@ -74,7 +76,7 @@ router.post('/register', async (req, res) => {
         });
         const userId = Number(insert.lastInsertRowid);
 
-        if (isTrialSignup) {
+        if (isTrialSignup && !ipIsAllowlisted) {
             await db.execute({
                 sql: 'INSERT OR IGNORE INTO trial_signup_ips (ip, user_id, plan) VALUES (?, ?, ?)',
                 args: [clientIp, userId, userPlan],
