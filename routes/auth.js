@@ -35,7 +35,7 @@ router.post('/register', async (req, res) => {
 
         const hashedPassword = await bcrypt.hash(password, 10);
         const userRole = role === 'admin' ? 'admin' : 'employee';
-        const userPlan = plan || 'free';
+        const userPlan = ['free', 'business_trial', 'enterprise_trial'].includes(plan) ? plan : 'free';
         const userDepartment = VALID_DEPARTMENTS.includes(department) ? department : 'general';
 
         let trialExpiry = null;
@@ -58,7 +58,6 @@ router.post('/register', async (req, res) => {
             args: [email, otp, 'verify', expires],
         });
 
-        console.log(`[DEV] Verification OTP for ${email}: ${otp}`);
         try {
             await sendVerificationEmail(email, name, otp);
         } catch (emailErr) {
@@ -434,17 +433,6 @@ router.post('/register-company', async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Server error' });
-    }
-});
-router.get('/set-plan/:email/:plan', async (req, res) => {
-    try {
-        await db.execute({
-            sql: "UPDATE users SET plan=?, trial_expires_at=datetime('now', '+30 days') WHERE email=?",
-            args: [req.params.plan, req.params.email]
-        });
-        res.json({ message: 'Plan updated' });
-    } catch(e) {
-        res.status(500).json({ message: e.message });
     }
 });
 
