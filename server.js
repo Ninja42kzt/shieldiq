@@ -71,6 +71,8 @@ app.use('/api/it', itScanRoutes);
 
 app.get('/health', (req, res) => res.send('ok'));
 
+app.use('/api/cron', require('./routes/cron'));
+
 const pages = [
     ['/', 'index.html'], ['/login', 'login.html'], ['/register', 'register.html'],
     ['/verify', 'verify.html'], ['/forgot-password', 'forgot-password.html'],

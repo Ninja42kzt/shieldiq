@@ -163,6 +163,7 @@ router.post('/verify-login', async (req, res) => {
         }
 
         await db.execute({ sql: 'UPDATE otps SET used = 1 WHERE id = ?', args: [record.id] });
+        await require('../utils/trial').expireIfNeeded(email);
 
         const userResult = await db.execute({
             sql: 'SELECT * FROM users WHERE email = ?',
