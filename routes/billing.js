@@ -98,7 +98,15 @@ async function processEvent(ev) {
             args: [sub?.user_id ?? null, r.id, subId || null, r.amount?.total || null, r.amount?.currency || null],
         });
     } else if (type === 'BILLING.SUBSCRIPTION.PAYMENT.FAILED') {
-        console.warn('PayPal payment failed for subscription', r.id);
+        const sub = (await db.execute({ sql: 'SELECT * FROM subscriptions WHERE provider_sub_id = ?', args: [r.id] })).rows[0];
+        if (!sub) return console.warn('Payment failed for unknown subscription', r.id);
+        console.warn('PayPal payment failed for subscription', r.id, '\u2014 downgrading to free');
+        await db.execute({ sql: "UPDATE subscriptions SET status='PAYMENT_FAILED', updated_at=CURRENT_TIMESTAMP WHERE provider_sub_id = ?", args: [r.id] });
+        const other = await db.execute({
+            sql: "SELECT 1 FROM subscriptions WHERE user_id = ? AND status = 'ACTIVE' AND provider_sub_id != ?",
+            args: [sub.user_id, r.id],
+        });
+        if (!other.rows.length) await setUserPlan(sub.user_id, 'free');
     }
 }
 

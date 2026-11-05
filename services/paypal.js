@@ -66,7 +66,7 @@ async function ensurePlan(planKey) {
             tenure_type: 'REGULAR', sequence: 1, total_cycles: 0,
             pricing_scheme: { fixed_price: { value: cfg.usd, currency_code: currency } },
         }],
-        payment_preferences: { auto_bill_outstanding: true, payment_failure_threshold: 2 },
+        payment_preferences: { auto_bill_outstanding: true, payment_failure_threshold: 1 },
         quantity_supported: true,
     }, { 'PayPal-Request-Id': `shieldiq-plan-${planKey}-${cfg.usd}` });
 
