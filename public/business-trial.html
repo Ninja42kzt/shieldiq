@@ -162,6 +162,10 @@
                       </div>
 
                       <div id="paypal-fields" style="display:none">
+                        <div class="form-group">
+                            <label>PayPal Account Email</label>
+                            <input type="email" id="paypal-email" placeholder="Leave blank to use your signup email"/>
+                        </div>
                         <div class="trial-notice">
                             <span>ℹ️</span>
                             <span>You'll approve on PayPal next — nothing is charged today. Your card/PayPal balance is only billed starting day 7, and only if you don't cancel.</span>
@@ -323,11 +327,13 @@
                 const data = await registerTrialAccount();
                 btn.textContent = '🅿️ Redirecting to PayPal...';
 
+                const paypalEmail = document.getElementById('paypal-email').value.trim();
                 const subRes = await fetch('/api/billing/paypal/subscribe', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + data.signupToken },
                     body: JSON.stringify({
                         plan: 'business',
+                        paypalEmail: paypalEmail || undefined,
                         returnPath: `/verify?email=${encodeURIComponent(trialData.email)}&redirect=/dashboard`,
                         cancelPath: '/business-trial',
                     }),
