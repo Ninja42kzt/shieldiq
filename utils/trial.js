@@ -40,7 +40,7 @@ function layout(name, bodyHtml, ctaText) {
         <h1 style="color:#00D4FF">🛡️ ShieldIQ</h1>
         <h2>Hi ${esc(name)},</h2>
         ${bodyHtml}
-        <p style="margin:28px 0"><a href="${SITE}/pricing" style="background:#00D4FF;color:#000;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700">${ctaText}</a></p>
+        <p style="margin:28px 0"><a href="${SITE}/billing" style="background:#00D4FF;color:#000;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700">${ctaText}</a></p>
         <p style="color:#666;font-size:12px">You're receiving this because you started a ShieldIQ trial.</p>
     </div>`;
 }

@@ -10,6 +10,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
+const billing = require('./routes/billing');
+app.post('/api/billing/paypal/webhook', express.raw({ type: '*/*' }), billing.webhookHandler);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
@@ -73,6 +75,8 @@ app.get('/health', (req, res) => res.send('ok'));
 
 app.use('/api/cron', require('./routes/cron'));
 
+app.use('/api/billing', billing.router);
+
 const pages = [
     ['/', 'index.html'], ['/login', 'login.html'], ['/register', 'register.html'],
     ['/verify', 'verify.html'], ['/forgot-password', 'forgot-password.html'],
@@ -82,7 +86,7 @@ const pages = [
     ['/business-trial', 'business-trial.html'], ['/enterprise-trial', 'enterprise-trial.html'],
     ['/about', 'about.html'], ['/contact', 'contact.html'], ['/terms', 'terms.html'],
     ['/privacy', 'privacy.html'], ['/register-company', 'register-company.html'], ['/training', 'training.html'],
-    ['/it-scan', 'it-scan.html'],
+    ['/it-scan', 'it-scan.html'], ['/billing', 'billing.html'],
 ];
 
 for (const [route, file] of pages) {

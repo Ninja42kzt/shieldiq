@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Billing - ShieldIQ</title>
+<link rel="stylesheet" href="css/style.css">
+<style>
+ body{background:#0A0A0F;color:#fff;font-family:sans-serif;margin:0}
+ .wrap{max-width:720px;margin:60px auto;padding:0 20px}
+ .card{background:#111;border:1px solid #2a2a33;border-radius:14px;padding:24px;margin:16px 0}
+ button{background:#00D4FF;color:#000;border:0;border-radius:8px;padding:12px 22px;font-weight:700;cursor:pointer}
+ button:disabled{opacity:.5} .muted{color:#999} #msg{margin-top:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🛡️ Billing</h1>
+  <p class="muted" id="current">Loading…</p>
+  <div class="card"><h2>Business — $8 / user / month</h2>
+    <p class="muted">Pay with PayPal. If you're still in your free trial, you won't be charged until it ends.</p>
+    <button onclick="subscribe('business')">Subscribe with PayPal</button></div>
+  <div class="card"><h2>Enterprise — $15 / user / month</h2>
+    <p class="muted">Pay with PayPal. If you're still in your free trial, you won't be charged until it ends.</p>
+    <button onclick="subscribe('enterprise')">Subscribe with PayPal</button></div>
+  <p id="msg" class="muted"></p>
+</div>
+<script>
+const token = localStorage.getItem('token');
+if (!token) location.href = '/login';
+const q = new URLSearchParams(location.search).get('status');
+if (q === 'success') document.getElementById('msg').textContent = 'Thanks! Your plan updates as soon as PayPal confirms (usually within a minute). Refresh this page, then log in again to see it.';
+if (q === 'cancelled') document.getElementById('msg').textContent = 'Subscription cancelled. You have not been charged.';
+fetch('/api/billing/status', { headers: { Authorization: 'Bearer ' + token } })
+  .then(r => r.json()).then(d => document.getElementById('current').textContent = 'Current plan: ' + (d.plan || 'free'))
+  .catch(() => document.getElementById('current').textContent = '');
+async function subscribe(plan) {
+  const msg = document.getElementById('msg'); msg.textContent = 'Opening PayPal…';
+  try {
+    const r = await fetch('/api/billing/paypal/subscribe', { method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token }, body: JSON.stringify({ plan }) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.message);
+    location.href = d.approveUrl;
+  } catch (e) { msg.textContent = 'Error: ' + e.message; }
+}
+</script>
+</body>
+</html>
