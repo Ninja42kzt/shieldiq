@@ -273,3 +273,19 @@
     .form-row { grid-template-columns: 1fr; }
     .step-line { width: 28px; }
 }
+
+/* Fix: a generic input-width rule was stretching #trial-agree to full width,
+   squeezing its label text into a narrow column. Force the checkbox back to
+   its real size and let the label text take the remaining space normally. */
+#step2 #trial-agree {
+    width: 18px !important;
+    height: 18px !important;
+    flex: 0 0 18px !important;
+}
+#step2 .form-group label {
+    width: 100%;
+}
+#step2 .form-group label span {
+    flex: 1 1 auto;
+    min-width: 0;
+}
