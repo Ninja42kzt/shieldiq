@@ -45,11 +45,14 @@ router.post('/register', async (req, res) => {
             trialExpiry = d.toISOString();
         }
 
-        await db.execute({
+        const insert = await db.execute({
             sql: `INSERT INTO users (name, company, email, password, verified, role, department, plan, trial_expires_at)
                   VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?)`,
             args: [name, company, email, hashedPassword, userRole, userDepartment, userPlan, trialExpiry],
         });
+        const userId = Number(insert.lastInsertRowid);
+        // Short-lived, scoped only to let the frontend kick off PayPal approval right after signup.
+        const signupToken = jwt.sign({ id: userId, email, role: userRole }, process.env.JWT_SECRET, { expiresIn: '15m' });
 
         const otp = generateOTP();
         const expires = new Date(Date.now() + 10 * 60 * 1000).toISOString();
@@ -68,6 +71,7 @@ router.post('/register', async (req, res) => {
             message: 'Account created! Check your email for your verification code.',
             requiresVerification: true,
             email,
+            signupToken,
         });
 
     } catch (err) {

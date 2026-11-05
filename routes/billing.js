@@ -6,6 +6,10 @@ const paypal = require('../services/paypal');
 
 const router = express.Router();
 const TRIAL_PLANS = ['business_trial', 'enterprise_trial'];
+const SITE = process.env.SITE_URL || 'https://shieldiq.glitchfactory.co.ke';
+function safeReturn(path) {
+    return (typeof path === 'string' && path.startsWith('/')) ? `${SITE}${path}` : undefined;
+}
 
 async function auth(req, res, next) {
     const token = req.headers.authorization?.split(' ')[1];
@@ -24,6 +28,8 @@ async function auth(req, res, next) {
 // Start a PayPal subscription. The plan is only upgraded later, by the verified webhook.
 router.post('/paypal/subscribe', auth, async (req, res) => {
     const planKey = req.body?.plan;
+    const returnUrl = safeReturn(req.body?.returnPath);
+    const cancelUrl = safeReturn(req.body?.cancelPath);
     const cfg = plans[planKey];
     if (!cfg) return res.status(400).json({ message: 'Invalid plan' });
     const seats = Math.min(Math.max(parseInt(req.body?.seats, 10) || 1, 1), cfg.maxSeats);
@@ -34,7 +40,7 @@ router.post('/paypal/subscribe', auth, async (req, res) => {
             const t = new Date(s.includes('T') ? s : s.replace(' ', 'T') + 'Z');
             if (t - Date.now() > 10 * 60 * 1000) startTime = t; // first charge when the trial ends
         }
-        const sub = await paypal.createSubscription({ planKey, seats, user: req.user, startTime });
+        const sub = await paypal.createSubscription({ planKey, seats, user: req.user, startTime, returnUrl, cancelUrl });
         await db.execute({
             sql: `INSERT OR IGNORE INTO subscriptions (user_id, provider, provider_sub_id, plan_key, status, seats)
                   VALUES (?, 'paypal', ?, ?, 'PENDING', ?)`,

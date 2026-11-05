@@ -79,7 +79,7 @@ async function ensurePlan(planKey) {
 
 // startTime (Date) = when the first charge happens. Used so a user still in their free trial is
 // approved now but charged only when the trial ends (card/PayPal on file, nothing taken until then).
-async function createSubscription({ planKey, seats, user, startTime }) {
+async function createSubscription({ planKey, seats, user, startTime, returnUrl, cancelUrl }) {
     const planId = await ensurePlan(planKey);
     const body = {
         plan_id: planId,
@@ -88,7 +88,8 @@ async function createSubscription({ planKey, seats, user, startTime }) {
         subscriber: { name: { given_name: String(user.name || 'ShieldIQ').split(' ')[0] }, email_address: user.email },
         application_context: {
             brand_name: 'ShieldIQ', user_action: 'SUBSCRIBE_NOW', shipping_preference: 'NO_SHIPPING',
-            return_url: `${SITE}/billing?status=success`, cancel_url: `${SITE}/billing?status=cancelled`,
+            return_url: returnUrl || `${SITE}/billing?status=success`,
+            cancel_url: cancelUrl || `${SITE}/billing?status=cancelled`,
         },
     };
     if (startTime) body.start_time = startTime.toISOString();

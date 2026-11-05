@@ -116,7 +116,7 @@
                     <div class="auth-header">
                         <div class="auth-icon">💳</div>
                         <h1>Payment Details</h1>
-                        <p>Card used for verification only — <strong style="color:var(--primary)">$0 charged today</strong></p>
+                        <p>Used for verification only — <strong style="color:var(--primary)">$0 charged today</strong></p>
                     </div>
                     <div id="step2-error" class="alert alert-error" style="display:none"></div>
 
@@ -124,7 +124,13 @@
                         🔒 256-bit SSL encrypted · PCI DSS compliant
                     </div>
 
+                    <div style="display:flex;gap:8px;margin-bottom:16px">
+                        <button type="button" id="method-card-btn" class="btn-outline" style="flex:1;cursor:pointer" onclick="setPayMethod('card')">💳 Card</button>
+                        <button type="button" id="method-paypal-btn" class="btn-outline" style="flex:1;cursor:pointer" onclick="setPayMethod('paypal')">🅿️ PayPal</button>
+                    </div>
+
                     <div class="auth-form">
+                      <div id="card-fields">
                         <div class="form-group">
                             <label>Cardholder Name</label>
                             <input type="text" id="card-name" placeholder="Name on card"/>
@@ -153,6 +159,14 @@
                             <span>ℹ️</span>
                             <span>We verify your card is real by placing a $1 hold that is automatically released within 2 minutes. This confirms you are a real person. <strong>You will not be charged.</strong></span>
                         </div>
+                      </div>
+
+                      <div id="paypal-fields" style="display:none">
+                        <div class="trial-notice">
+                            <span>ℹ️</span>
+                            <span>You'll approve on PayPal next — nothing is charged today. Your card/PayPal balance is only billed starting day 7, and only if you don't cancel.</span>
+                        </div>
+                      </div>
 
                         <div class="form-group" style="margin-top:8px">
                             <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer">
@@ -203,6 +217,17 @@
 
     <script>
         let trialData = {};
+        let payMethod = 'card';
+
+        function setPayMethod(m) {
+            payMethod = m;
+            document.getElementById('card-fields').style.display = m === 'card' ? 'block' : 'none';
+            document.getElementById('paypal-fields').style.display = m === 'paypal' ? 'block' : 'none';
+            document.getElementById('method-card-btn').style.opacity = m === 'card' ? '1' : '0.5';
+            document.getElementById('method-paypal-btn').style.opacity = m === 'paypal' ? '1' : '0.5';
+            document.querySelector('#step2 .btn-primary.full').textContent =
+                m === 'paypal' ? '🅿️ Continue with PayPal' : '🚀 Start My Free Trial';
+        }
 
         function toggleTrialPass() {
             const p = document.getElementById('trial-password');
@@ -261,7 +286,67 @@
             document.getElementById('card-name').value = name;
         }
 
+        async function registerTrialAccount() {
+            const response = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...trialData, plan: 'business_trial' })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message || 'Registration failed');
+            return data;
+        }
+
+        function showStep3() {
+            const expiry = new Date();
+            expiry.setDate(expiry.getDate() + 7);
+            document.getElementById('step2').style.display = 'none';
+            document.getElementById('step3').style.display = 'block';
+            document.getElementById('step3-dot').classList.add('active');
+            document.getElementById('trial-expiry-date').textContent =
+                expiry.toLocaleDateString('en-KE', { day:'numeric', month:'long', year:'numeric' });
+        }
+
+        async function startTrialWithPaypal() {
+            const err = document.getElementById('step2-error');
+            const agreed = document.getElementById('trial-agree').checked;
+            if (!agreed) {
+                err.textContent = 'Please agree to the Terms of Service to continue';
+                err.style.display = 'block'; return;
+            }
+            err.style.display = 'none';
+            const btn = document.querySelector('#step2 .btn-primary.full');
+            btn.textContent = '🔄 Creating account...';
+            btn.disabled = true;
+
+            try {
+                const data = await registerTrialAccount();
+                btn.textContent = '🅿️ Redirecting to PayPal...';
+
+                const subRes = await fetch('/api/billing/paypal/subscribe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + data.signupToken },
+                    body: JSON.stringify({
+                        plan: 'business',
+                        returnPath: `/verify?email=${encodeURIComponent(trialData.email)}&redirect=/dashboard`,
+                        cancelPath: '/business-trial',
+                    }),
+                });
+                const subData = await subRes.json();
+                if (!subRes.ok) throw new Error(subData.message || 'Could not start PayPal approval');
+
+                window.location.href = subData.approveUrl;
+            } catch (e) {
+                btn.textContent = '🅿️ Continue with PayPal';
+                btn.disabled = false;
+                err.textContent = e.message || 'Server error. Please try again.';
+                err.style.display = 'block';
+            }
+        }
+
         async function startTrial() {
+            if (payMethod === 'paypal') return startTrialWithPaypal();
+
             const cardName = document.getElementById('card-name').value;
             const cardNumber = document.getElementById('card-number').value.replace(/\s/g, '');
             const cardExpiry = document.getElementById('card-expiry').value;
@@ -287,46 +372,23 @@
             btn.textContent = '🔄 Verifying card...';
             btn.disabled = true;
 
-            // Simulate $1 hold verification (2 seconds)
             await new Promise(r => setTimeout(r, 2000));
             btn.textContent = '✅ Card verified! Creating account...';
 
             try {
-                // Register account
-                const response = await fetch('/api/auth/register', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ...trialData, plan: 'business_trial' })
-                });
-                const data = await response.json();
-
-                if (response.ok) {
-                    // Set trial expiry
-                    const expiry = new Date();
-                    expiry.setDate(expiry.getDate() + 7);
-                    localStorage.setItem('trial_plan', 'business');
-                    localStorage.setItem('trial_expiry', expiry.toISOString());
-
-                    // Show success
-                    document.getElementById('step2').style.display = 'none';
-                    document.getElementById('step3').style.display = 'block';
-                    document.getElementById('step3-dot').classList.add('active');
-                    document.getElementById('trial-expiry-date').textContent = expiry.toLocaleDateString('en-KE', { day:'numeric', month:'long', year:'numeric' });
-
-                    // Redirect to verify email
-                    setTimeout(() => {
-                        window.location.href = `/verify?email=${encodeURIComponent(trialData.email)}&redirect=/dashboard`;
-                    }, 3000);
-                } else {
-                    btn.textContent = '🚀 Start My Free Trial';
-                    btn.disabled = false;
-                    err.textContent = data.message || 'Registration failed';
-                    err.style.display = 'block';
-                }
-            } catch(e) {
+                const data = await registerTrialAccount();
+                localStorage.setItem('trial_plan', 'business');
+                const expiry = new Date();
+                expiry.setDate(expiry.getDate() + 7);
+                localStorage.setItem('trial_expiry', expiry.toISOString());
+                showStep3();
+                setTimeout(() => {
+                    window.location.href = `/verify?email=${encodeURIComponent(trialData.email)}&redirect=/dashboard`;
+                }, 3000);
+            } catch (e) {
                 btn.textContent = '🚀 Start My Free Trial';
                 btn.disabled = false;
-                err.textContent = 'Server error. Please try again.';
+                err.textContent = e.message || 'Server error. Please try again.';
                 err.style.display = 'block';
             }
         }
