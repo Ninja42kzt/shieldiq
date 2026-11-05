@@ -8,11 +8,33 @@ const { generateOTP, sendVerificationEmail, sendOTPEmail } = require('../utils/e
 // Register
 const VALID_DEPARTMENTS = ['general', 'it', 'hr', 'finance', 'operations', 'sales'];
 
+let trialIpTableReady = false;
+async function ensureTrialIpTable() {
+    if (trialIpTableReady) return;
+    await db.execute(`CREATE TABLE IF NOT EXISTS trial_signup_ips (
+        ip TEXT PRIMARY KEY,
+        user_id INTEGER,
+        plan TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )`);
+    trialIpTableReady = true;
+}
+
 router.post('/register', async (req, res) => {
     const { name, company, email, password, role, plan, department } = req.body;
 
     if (!name || !company || !email || !password) {
         return res.status(400).json({ message: 'All fields are required' });
+    }
+
+    const isTrialSignup = plan === 'business_trial' || plan === 'enterprise_trial';
+    const clientIp = req.ip;
+    if (isTrialSignup) {
+        await ensureTrialIpTable();
+        const prior = await db.execute({ sql: 'SELECT 1 FROM trial_signup_ips WHERE ip = ?', args: [clientIp] });
+        if (prior.rows.length > 0) {
+            return res.status(400).json({ message: 'A free trial has already been started from this network.' });
+        }
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -51,6 +73,13 @@ router.post('/register', async (req, res) => {
             args: [name, company, email, hashedPassword, userRole, userDepartment, userPlan, trialExpiry],
         });
         const userId = Number(insert.lastInsertRowid);
+
+        if (isTrialSignup) {
+            await db.execute({
+                sql: 'INSERT OR IGNORE INTO trial_signup_ips (ip, user_id, plan) VALUES (?, ?, ?)',
+                args: [clientIp, userId, userPlan],
+            });
+        }
         // Short-lived, scoped only to let the frontend kick off PayPal approval right after signup.
         const signupToken = jwt.sign({ id: userId, email, role: userRole }, process.env.JWT_SECRET, { expiresIn: '15m' });
 

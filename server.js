@@ -10,6 +10,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
+app.set('trust proxy', 1); // Required on Render so req.ip is the real client IP, not Render's proxy
 const billing = require('./routes/billing');
 app.post('/api/billing/paypal/webhook', express.raw({ type: '*/*' }), billing.webhookHandler);
 app.use(express.json());
