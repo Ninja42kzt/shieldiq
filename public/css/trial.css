@@ -289,3 +289,11 @@
     flex: 1 1 auto;
     min-width: 0;
 }
+
+/* Restore native checkbox rendering — auth.css's shared input rule strips it with
+   -webkit-appearance: none, which removes the checkmark along with the box. */
+#step2 #trial-agree {
+    -webkit-appearance: checkbox !important;
+    appearance: checkbox !important;
+    accent-color: var(--primary);
+}
