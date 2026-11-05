@@ -69,6 +69,8 @@ app.use('/api/admin', authenticateToken, requireAdmin, adminRoutes);
 // verification and lets it apply its own department/plan rules.
 app.use('/api/it', itScanRoutes);
 
+app.get('/health', (req, res) => res.send('ok'));
+
 const pages = [
     ['/', 'index.html'], ['/login', 'login.html'], ['/register', 'register.html'],
     ['/verify', 'verify.html'], ['/forgot-password', 'forgot-password.html'],
