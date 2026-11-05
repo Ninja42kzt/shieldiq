@@ -1,22 +1,15 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
-const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 587,
-    secure: false,
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-    }
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
+const FROM_ADDRESS = 'ShieldIQ <noreply@glitchfactory.co.ke>';
 
 function generateOTP() {
     return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
 async function sendVerificationEmail(to, name, otp) {
-    await transporter.sendMail({
-        from: `ShieldIQ <${process.env.EMAIL_USER}>`,
+    const { error } = await resend.emails.send({
+        from: FROM_ADDRESS,
         to,
         subject: 'Verify your ShieldIQ account',
         html: `
@@ -31,6 +24,10 @@ async function sendVerificationEmail(to, name, otp) {
             <p style="color:#666;font-size:12px">If you didn't create a ShieldIQ account, ignore this email.</p>
         </div>`
     });
+
+    if (error) {
+        throw new Error(`Resend error: ${error.message || JSON.stringify(error)}`);
+    }
 }
 
 async function sendOTPEmail(to, name, otp, purpose = 'login') {
@@ -38,8 +35,9 @@ async function sendOTPEmail(to, name, otp, purpose = 'login') {
         login: 'Your ShieldIQ login code',
         reset: 'Reset your ShieldIQ password'
     };
-    await transporter.sendMail({
-        from: `ShieldIQ <${process.env.EMAIL_USER}>`,
+
+    const { error } = await resend.emails.send({
+        from: FROM_ADDRESS,
         to,
         subject: subjects[purpose] || 'Your ShieldIQ code',
         html: `
@@ -54,6 +52,10 @@ async function sendOTPEmail(to, name, otp, purpose = 'login') {
             <p style="color:#666;font-size:12px">If you didn't request this, secure your account immediately.</p>
         </div>`
     });
+
+    if (error) {
+        throw new Error(`Resend error: ${error.message || JSON.stringify(error)}`);
+    }
 }
 
 module.exports = { generateOTP, sendVerificationEmail, sendOTPEmail };
