@@ -323,6 +323,30 @@ router.post('/reset-password', async (req, res) => {
             args: [hashed, email],
         });
 
+        // First-time activation for an admin-added employee: decide their plan now, based on
+        // the company's CURRENT state, not whatever it was when the admin added them.
+        const target = (await db.execute({ sql: 'SELECT id, company, invited_by_admin, trial_activated FROM users WHERE email = ?', args: [email] })).rows[0];
+        if (target && target.invited_by_admin && !target.trial_activated) {
+            const adminRow = (await db.execute({
+                sql: "SELECT plan FROM users WHERE company = ? AND role = 'admin' LIMIT 1",
+                args: [target.company],
+            })).rows[0];
+            const companyPlan = adminRow?.plan || 'free';
+            if (companyPlan === 'business_trial' || companyPlan === 'enterprise_trial') {
+                const trialExpiry = new Date();
+                trialExpiry.setDate(trialExpiry.getDate() + 7);
+                await db.execute({
+                    sql: 'UPDATE users SET plan = ?, trial_expires_at = ?, trial_activated = 1 WHERE id = ?',
+                    args: [companyPlan, trialExpiry.toISOString(), target.id],
+                });
+            } else {
+                await db.execute({
+                    sql: 'UPDATE users SET plan = ?, trial_expires_at = NULL, trial_activated = 1 WHERE id = ?',
+                    args: [companyPlan, target.id],
+                });
+            }
+        }
+
         res.json({ message: 'Password reset successfully! You can now login.' });
     } catch (err) {
         console.error(err);

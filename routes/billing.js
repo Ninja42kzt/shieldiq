@@ -67,7 +67,14 @@ router.get('/status', auth, async (req, res) => {
 });
 
 async function setUserPlan(userId, plan) {
-    await db.execute({ sql: 'UPDATE users SET plan = ?, trial_expires_at = NULL WHERE id = ?', args: [plan, userId] });
+    const row = (await db.execute({ sql: 'SELECT company FROM users WHERE id = ?', args: [userId] })).rows[0];
+    if (row && row.company) {
+        // Cascades to every teammate under this company — including anyone mid-way through
+        // their own independent trial countdown. A company-wide plan change always wins.
+        await db.execute({ sql: 'UPDATE users SET plan = ?, trial_expires_at = NULL WHERE company = ?', args: [plan, row.company] });
+    } else {
+        await db.execute({ sql: 'UPDATE users SET plan = ?, trial_expires_at = NULL WHERE id = ?', args: [plan, userId] });
+    }
 }
 
 // Exported separately so tests can call it directly.
