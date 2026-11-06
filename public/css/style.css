@@ -22,6 +22,16 @@ body {
     overflow-x: hidden;
 }
 
+/* Several dropdowns across the app set color:var(--text) (white) on the
+   <select> itself for the dark theme, but the open option list is drawn
+   by the OS/browser using its own (usually light) background rather than
+   our dark glass background — so the white text was invisible until the
+   user hovered a row. Site-wide fix instead of one per dropdown. */
+select option {
+    background: var(--dark-2);
+    color: var(--text);
+}
+
 /* VIDEO BACKGROUND */
 .video-container {
     position: fixed;

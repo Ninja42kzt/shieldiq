@@ -58,4 +58,34 @@ async function sendOTPEmail(to, name, otp, purpose = 'login') {
     }
 }
 
-module.exports = { generateOTP, sendVerificationEmail, sendOTPEmail };
+// Admin "remind" button: sent from ShieldIQ's own verified address (Resend requires
+// a verified sending domain, so we can't send as the admin's actual mailbox), but
+// reply-to is set to the admin's email so a reply from the employee reaches the
+// admin directly, and the admin's name/email is shown in the body too.
+async function sendReminderEmail(to, toName, adminName, adminEmail, companyName) {
+    const { error } = await resend.emails.send({
+        from: FROM_ADDRESS,
+        to,
+        replyTo: adminEmail,
+        subject: `Reminder: complete your ShieldIQ training${companyName ? ` — ${companyName}` : ''}`,
+        html: `
+        <div style="font-family:sans-serif;max-width:500px;margin:0 auto;padding:32px;background:#0A0A0F;color:#fff;border-radius:16px">
+            <h1 style="color:#00D4FF">🛡️ ShieldIQ</h1>
+            <h2>Hi ${toName},</h2>
+            <p style="color:#999">
+                ${adminName} (<a href="mailto:${adminEmail}" style="color:#00D4FF">${adminEmail}</a>)
+                wanted to remind you to finish your security awareness training.
+            </p>
+            <div style="background:#111;border:1px solid #333;border-radius:12px;padding:20px;margin:24px 0">
+                <p style="margin:0;color:#ccc">Log in and pick up where you left off — it only takes a few minutes per module.</p>
+            </div>
+            <p style="color:#666;font-size:12px">Replying to this email will reach ${adminName} directly.</p>
+        </div>`
+    });
+
+    if (error) {
+        throw new Error(`Resend error: ${error.message || JSON.stringify(error)}`);
+    }
+}
+
+module.exports = { generateOTP, sendVerificationEmail, sendOTPEmail, sendReminderEmail };

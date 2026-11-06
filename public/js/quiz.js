@@ -10,7 +10,7 @@ if (userData.name) {
 
 // Plan gating
 const plan = userData.plan || 'free';
-const isPremium = ['business_trial', 'business', 'enterprise_trial', 'enterprise'].includes(plan);
+const isPremium = ['business_trial', 'business', 'enterprise_trial', 'enterprise', 'individual_trial', 'individual', 'individual_pro_trial', 'individual_pro'].includes(plan);
 const premiumModules = ['devices', 'data', 'incident'];
 
 const moduleConfig = {

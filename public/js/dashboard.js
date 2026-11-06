@@ -11,7 +11,11 @@ let plan = userData.plan || 'free';
 // Redirect to admin panel ONLY for company admins -- a solo individual is also
 // role='admin' (so they can use the same billing/upgrade flow), but has no team to
 // manage, so they stay on this page instead of landing on company-admin UI.
-if (userData.role === 'admin' && userData.company) { window.location.href = '/admin'; }
+// Company admins can still get here deliberately via the "My Dashboard" link
+// in admin.html (?from=admin), which should land them on their own dashboard
+// instead of bouncing straight back to /admin.
+const cameFromAdminNav = new URLSearchParams(window.location.search).get('from') === 'admin';
+if (userData.role === 'admin' && userData.company && !cameFromAdminNav) { window.location.href = '/admin'; }
 
 // Leaderboard compares teammates within a company -- meaningless and hidden for a solo user.
 if (!userData.company) {

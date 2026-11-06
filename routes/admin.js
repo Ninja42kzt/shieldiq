@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { db } = require("../db");
-const { generateOTP, sendOTPEmail } = require('../utils/email');
+const { generateOTP, sendOTPEmail, sendReminderEmail } = require('../utils/email');
 
 const VALID_DEPARTMENTS = ['general', 'it', 'hr', 'finance', 'operations', 'sales'];
 
@@ -251,6 +251,36 @@ router.post('/employees', adminAuth, async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// POST /api/admin/remind -- email a teammate a nudge to finish their training.
+// Sent from ShieldIQ's address with reply-to set to the admin's own email, so
+// a reply reaches the admin directly even though Resend requires mail to go
+// out from a verified ShieldIQ address rather than the admin's own mailbox.
+router.post('/remind', adminAuth, async (req, res) => {
+    const { employeeEmail } = req.body;
+    if (!employeeEmail) return res.status(400).json({ message: 'employeeEmail is required' });
+
+    try {
+        const adminRow = (await db.execute({ sql: 'SELECT name, email, company FROM users WHERE id = ?', args: [req.user.id] })).rows[0];
+        if (!adminRow) return res.status(401).json({ message: 'Invalid token' });
+
+        // Scope to the admin's own company so one admin can't spam another company's staff.
+        const employeeRow = (await db.execute({
+            sql: 'SELECT name, email FROM users WHERE email = ? AND company = ?',
+            args: [employeeEmail, adminRow.company],
+        })).rows[0];
+        if (!employeeRow) return res.status(404).json({ message: 'That employee was not found on your team.' });
+
+        await sendReminderEmail(employeeRow.email, employeeRow.name, adminRow.name, adminRow.email, adminRow.company);
+
+        res.json({
+            message: `Reminder sent via ${adminRow.email} to ${employeeRow.email}.`,
+        });
+    } catch (err) {
+        console.error('Reminder email failed:', err);
+        res.status(500).json({ message: 'Could not send the reminder email. Please try again.' });
     }
 });
 

@@ -82,10 +82,11 @@
             }
 
             try {
+                const deviceToken = localStorage.getItem('device_token') || undefined;
                 const response = await fetch('/api/auth/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
+                    body: JSON.stringify({ email, password, deviceToken })
                 });
 
                 const data = await response.json();
@@ -97,6 +98,16 @@
                     // Pass email to verify page via sessionStorage
                     sessionStorage.setItem('mfa_email', email);
                     setTimeout(() => window.location.href = '/verify', 1000);
+                } else if (response.ok && data.token) {
+                    // MFA not required (disabled, or this device is trusted) — logged in directly
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    localStorage.setItem('token_expiry', Date.now() + (30 * 24 * 60 * 60 * 1000));
+                    successMsg.textContent = 'Login successful! Redirecting...';
+                    successMsg.style.display = 'block';
+                    errorMsg.style.display = 'none';
+                    const redirect = data.user.role === 'admin' ? '/admin' : '/dashboard';
+                    setTimeout(() => window.location.href = redirect, 800);
                 } else {
                     errorMsg.textContent = data.message || 'Invalid credentials';
                     errorMsg.style.display = 'block';

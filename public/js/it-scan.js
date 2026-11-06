@@ -2,7 +2,7 @@ const token = localStorage.getItem('token');
 if (!token) window.location.href = '/login';
 
 const userData = JSON.parse(localStorage.getItem('user') || '{}');
-const ENTERPRISE_PLANS = ['enterprise', 'enterprise_trial', 'individual_pro'];
+const ENTERPRISE_PLANS = ['enterprise', 'enterprise_trial', 'individual_pro', 'individual_pro_trial'];
 
 if (userData.name) {
     document.getElementById('user-name').textContent = userData.name;
@@ -12,7 +12,7 @@ if (userData.name) {
 
 // A solo individual has no department (no admin to assign one) -- on Individual Pro
 // they count as their own IT department, matching the server-side rule in itScan.js.
-const isIT = (!userData.company && userData.plan === 'individual_pro')
+const isIT = (!userData.company && ['individual_pro', 'individual_pro_trial'].includes(userData.plan))
     || (userData.department || '').toLowerCase() === 'it';
 const isEnterprise = ENTERPRISE_PLANS.includes(userData.plan);
 
@@ -54,6 +54,14 @@ async function startScan() {
     } catch (e) {
         msg.textContent = 'Server error. Please try again.';
     }
+}
+
+// Scanned repos are untrusted input -- a matched code line could itself contain
+// HTML/script, so escape it before dropping it into innerHTML.
+function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
 }
 
 function statusBadge(status) {
@@ -113,12 +121,18 @@ async function viewScan(id) {
     if (!vulns.length) {
         vulnsEl.innerHTML = '<p style="color:var(--text-muted)">No vulnerability detail available.</p>';
     } else {
+        // Each finding carries name/description (what it is), file/line/code
+        // (where it is) and a recommendation (how to fix it) -- show all of
+        // it so IT doesn't have to go dig through the repo to figure out
+        // what the fix actually is.
         vulnsEl.innerHTML = vulns.map(v => `
             <div class="vuln-item">
                 <span class="sev sev-${v.severity}">${v.severity}</span>
-                <strong>${v.title || v.type || 'Issue'}</strong>
+                <strong>${v.name || v.title || v.type || 'Issue'}</strong>
                 <div style="font-size:13px;color:var(--text-muted);margin-top:6px">${v.description || ''}</div>
                 ${v.file ? `<div style="font-size:12px;color:var(--text-muted);margin-top:4px">📄 ${v.file}${v.line ? ':' + v.line : ''}</div>` : ''}
+                ${v.code ? `<pre style="font-size:12px;color:#ff9f0a;background:rgba(255,255,255,0.03);border-radius:6px;padding:8px 10px;margin-top:8px;overflow-x:auto;white-space:pre-wrap">${escapeHtml(v.code)}</pre>` : ''}
+                ${v.recommendation ? `<div style="font-size:13px;color:#34c759;margin-top:8px"><strong>✅ Fix:</strong> ${v.recommendation}</div>` : ''}
             </div>
         `).join('');
     }

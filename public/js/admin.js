@@ -226,8 +226,26 @@ function getWorstModule(completion) {
     return worst;
 }
 
-function sendReminder(email, name) {
-    alert(`Reminder sent to ${name} (${email})!\n\nIn production this sends an email encouraging them to complete their training.`);
+async function sendReminder(email, name) {
+    const btn = event?.target?.closest('button');
+    const originalLabel = btn ? btn.textContent : null;
+    if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+
+    try {
+        const res = await fetch('/api/admin/remind', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ employeeEmail: email })
+        });
+        const data = await res.json();
+        alert(res.ok
+            ? data.message
+            : (data.message || `Couldn't send a reminder to ${name}.`));
+    } catch (e) {
+        alert(`Couldn't send a reminder to ${name} — server error.`);
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = originalLabel; }
+    }
 }
 
 function exportReport() {

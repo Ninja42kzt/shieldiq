@@ -36,6 +36,10 @@
                         style="letter-spacing:8px; text-align:center; font-size:24px; font-weight:700"
                         oninput="this.value = this.value.replace(/[^0-9]/g, '')" />
                 </div>
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-muted);margin:4px 0 16px">
+                    <input type="checkbox" id="trust-device" style="width:auto">
+                    Trust this device for 30 days (skip the emailed code next time)
+                </label>
                 <button class="btn-primary full" onclick="verifyCode()">
                     Verify & Login →
                 </button>
@@ -69,10 +73,11 @@
             }
 
             try {
+                const trustDevice = document.getElementById('trust-device').checked;
                 const response = await fetch('/api/auth/verify-login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, otp })
+                    body: JSON.stringify({ email, otp, trustDevice })
                 });
 
                 const data = await response.json();
@@ -80,6 +85,8 @@
                 if (response.ok && data.token) {
                     localStorage.setItem('token', data.token);
                     localStorage.setItem('user', JSON.stringify(data.user));
+                    localStorage.setItem('token_expiry', Date.now() + (30 * 24 * 60 * 60 * 1000));
+                    if (data.deviceToken) localStorage.setItem('device_token', data.deviceToken);
                     sessionStorage.removeItem('mfa_email');
                     successMsg.textContent = 'Login successful! Redirecting...';
                     successMsg.style.display = 'block';

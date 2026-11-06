@@ -3,10 +3,57 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { db } = require("../db");
+const crypto = require('crypto');
 const { generateOTP, sendVerificationEmail, sendOTPEmail } = require('../utils/email');
 
 // Register
 const VALID_DEPARTMENTS = ['general', 'it', 'hr', 'finance', 'operations', 'sales'];
+
+// Builds the { token, user } payload returned on a completed login, and —
+// when the client asked to trust this device — a device_token the client
+// should store and send back on future /login calls to skip MFA for the
+// configured window (see DEVICE_TRUST_DAYS below).
+const DEVICE_TRUST_DAYS = 30;
+
+function issueSession(user) {
+    const token = jwt.sign(
+        { id: user.id, email: user.email, role: user.role },
+        process.env.JWT_SECRET,
+        { expiresIn: '30d' }
+    );
+    return {
+        token,
+        user: {
+            id: user.id,
+            name: user.name,
+            company: user.company,
+            email: user.email,
+            role: user.role,
+            department: user.department || 'general',
+            plan: user.plan,
+            mfa_enabled: user.mfa_enabled,
+        },
+    };
+}
+
+async function trustThisDevice(email) {
+    const deviceToken = crypto.randomUUID();
+    const expires = new Date(Date.now() + DEVICE_TRUST_DAYS * 24 * 60 * 60 * 1000).toISOString();
+    await db.execute({
+        sql: 'INSERT INTO trusted_devices (email, device_token, expires_at) VALUES (?, ?, ?)',
+        args: [email, deviceToken, expires],
+    });
+    return deviceToken;
+}
+
+async function isDeviceTrusted(email, deviceToken) {
+    if (!deviceToken) return false;
+    const result = await db.execute({
+        sql: 'SELECT 1 FROM trusted_devices WHERE email = ? AND device_token = ? AND expires_at > CURRENT_TIMESTAMP',
+        args: [email, deviceToken],
+    });
+    return result.rows.length > 0;
+}
 
 let trialIpTableReady = false;
 async function ensureTrialIpTable() {
@@ -141,7 +188,7 @@ router.post('/verify-email', async (req, res) => {
 
 // Login — step 1
 router.post('/login', async (req, res) => {
-    const { email, password } = req.body;
+    const { email, password, deviceToken } = req.body;
 
     if (!email || !password) {
         return res.status(400).json({ message: 'All fields are required' });
@@ -160,6 +207,14 @@ router.post('/login', async (req, res) => {
         if (!valid) return res.status(401).json({ message: 'Invalid email or password' });
 
         if (!user.verified) return res.status(401).json({ message: 'Please verify your email first' });
+
+        // MFA only applies if the user has actually turned it on, and is
+        // skipped on a device they've chosen to trust (see /verify-login).
+        if (!user.mfa_enabled || await isDeviceTrusted(email, deviceToken)) {
+            await require('../utils/trial').expireIfNeeded(email);
+            const refreshed = (await db.execute({ sql: 'SELECT * FROM users WHERE email = ?', args: [email] })).rows[0];
+            return res.json(issueSession(refreshed));
+        }
 
         const mfaOtp = generateOTP();
         const expires = new Date(Date.now() + 10 * 60 * 1000).toISOString();
@@ -184,7 +239,7 @@ router.post('/login', async (req, res) => {
 
 // Login — step 2: verify MFA
 router.post('/verify-login', async (req, res) => {
-    const { email, otp } = req.body;
+    const { email, otp, trustDevice } = req.body;
 
     try {
         const otpResult = await db.execute({
@@ -206,25 +261,14 @@ router.post('/verify-login', async (req, res) => {
         });
         const user = userResult.rows[0];
 
-        const token = jwt.sign(
-            { id: user.id, email: user.email, role: user.role },
-            process.env.JWT_SECRET,
-            { expiresIn: '30d' }
-        );
+        const session = issueSession(user);
+        // "Trust this device" — skip the emailed code next time, on this
+        // device, for DEVICE_TRUST_DAYS. Still requires password every time.
+        if (trustDevice) {
+            session.deviceToken = await trustThisDevice(email);
+        }
 
-        res.json({
-            token,
-            user: {
-                id: user.id,
-                name: user.name,
-                company: user.company,
-                email: user.email,
-                role: user.role,
-                department: user.department || 'general',
-                plan: user.plan,
-                mfa_enabled: user.mfa_enabled,
-            },
-        });
+        res.json(session);
 
     } catch (err) {
         console.error(err);
