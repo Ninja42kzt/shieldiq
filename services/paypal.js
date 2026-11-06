@@ -116,4 +116,18 @@ async function verifyWebhook(headers, rawBody) {
     return r.ok && j.verification_status === 'SUCCESS';
 }
 
-module.exports = { ensureTables, ensurePlan, createSubscription, verifyWebhook };
+// Asks PayPal to cancel a subscription. PayPal answers 204 with no body, so this does its own
+// fetch instead of going through api(). The CANCELLED webhook performs the downgrade.
+async function cancelSubscription(subId, reason) {
+    const r = await fetch(`${BASE}/v1/billing/subscriptions/${encodeURIComponent(subId)}/cancel`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${await accessToken()}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: String(reason || 'Cancelled by customer').slice(0, 128) }),
+    });
+    if (!r.ok) {
+        const j = await r.json().catch(() => ({}));
+        throw new Error(j.message || `PayPal cancel failed (${r.status})`);
+    }
+}
+
+module.exports = { ensureTables, ensurePlan, createSubscription, cancelSubscription, verifyWebhook };

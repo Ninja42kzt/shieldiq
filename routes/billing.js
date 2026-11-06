@@ -145,6 +145,23 @@ router.get('/status', auth, async (req, res) => {
     res.json({ plan: req.user.plan, subscriptions: subs.rows });
 });
 
+// Cancel the caller's active PayPal subscription. This only asks PayPal to cancel; the verified
+// CANCELLED webhook (processEvent) does the actual downgrade to free.
+router.post('/paypal/cancel', auth, requireAdmin, async (req, res) => {
+    try {
+        const row = (await db.execute({
+            sql: "SELECT provider_sub_id FROM subscriptions WHERE user_id = ? AND status = 'ACTIVE' ORDER BY id DESC LIMIT 1",
+            args: [req.user.id],
+        })).rows[0];
+        if (!row) return res.status(400).json({ message: 'No active subscription to cancel' });
+        await paypal.cancelSubscription(row.provider_sub_id, 'Cancelled by customer in ShieldIQ');
+        res.json({ message: 'Cancellation requested. Your plan switches to Free once PayPal confirms.' });
+    } catch (e) {
+        console.error('cancel failed:', e.message);
+        res.status(500).json({ message: 'Could not cancel here. Please cancel in PayPal instead.' });
+    }
+});
+
 async function setUserPlan(userId, plan) {
     const row = (await db.execute({ sql: 'SELECT company FROM users WHERE id = ?', args: [userId] })).rows[0];
     if (row && row.company) {
