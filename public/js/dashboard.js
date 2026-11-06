@@ -18,11 +18,18 @@ if (!userData.company) {
     document.querySelectorAll('a[href="/leaderboard"]').forEach(el => el.style.display = 'none');
 }
 
-// CodeGuard nav link: only IT department employees see it
-if ((userData.department || '').toLowerCase() === 'it') {
+// CodeGuard nav link, per pricing: Individual Pro gets it for everyone on that plan (a solo
+// account has no real department); Enterprise gets it only for IT-department employees (the
+// pricing table literally says "CodeGuard code security scanning (IT department)" for that tier);
+// Business/Free never get it, department or not. Re-run from refreshPlan() since it depends on `plan`.
+function renderCodeGuardNav() {
     const cgNav = document.getElementById('nav-codeguard');
-    if (cgNav) cgNav.style.display = 'flex';
+    if (!cgNav) return;
+    const hasCodeGuard = (plan === 'individual_pro' || plan === 'individual_pro_trial')
+        || ((plan === 'enterprise' || plan === 'enterprise_trial') && (userData.department || '').toLowerCase() === 'it');
+    cgNav.style.display = hasCodeGuard ? 'flex' : 'none';
 }
+renderCodeGuardNav();
 
 // Plan config -- functions (not consts) so they stay correct after refreshPlan() updates `plan`.
 function isPremium() { return ['business_trial', 'business', 'enterprise_trial', 'enterprise', 'individual_trial', 'individual', 'individual_pro_trial', 'individual_pro'].includes(plan); }
@@ -71,6 +78,7 @@ async function refreshPlan() {
             userData.plan = plan;
             localStorage.setItem('user', JSON.stringify(userData));
             renderPlanUI();
+            renderCodeGuardNav();
             renderModules();
             loadRecommendations();
         }
