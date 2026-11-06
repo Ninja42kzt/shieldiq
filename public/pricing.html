@@ -195,6 +195,10 @@
         .plan-tabs { display:flex; justify-content:center; gap:8px; margin:0 auto 32px; padding:6px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:12px; width:fit-content; }
         .plan-tab { background:none; border:none; color:#8b8b99; font-size:14px; font-weight:600; padding:10px 28px; border-radius:8px; cursor:pointer; font-family:inherit; }
         .plan-tab.active { background:#00d4ff; color:#000; }
+    
+        #plans-team { grid-template-columns: repeat(4, 1fr); max-width: 1300px; margin-left: auto; margin-right: auto; }
+        @media (max-width: 1200px) { #plans-team { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 700px) { #plans-team { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
@@ -345,6 +349,22 @@
             </div>
         </div>
 
+
+        <!-- ENTERPRISE+ (custom) -->
+        <div class="plan-card">
+            <div class="plan-name">Enterprise+</div>
+            <div class="plan-price" style="font-size:36px">Custom</div>
+            <p class="plan-desc">For larger organizations. We build a plan around your size, security needs and budget.</p>
+            <a href="mailto:sales@glitchfactory.co.ke?subject=ShieldIQ%20Enterprise%2B%20inquiry" class="plan-btn plan-btn-outline plan-btn-contact">Contact Us</a>
+            <div class="plan-features">
+                <div class="plan-feature"><span class="check">&#10003;</span> Everything in Enterprise</div>
+                <div class="plan-feature"><span class="check">&#10003;</span> 30+ team members</div>
+                <div class="plan-feature"><span class="check">&#10003;</span> Custom pricing &amp; invoicing</div>
+                <div class="plan-feature"><span class="check">&#10003;</span> Training tailored to your industry</div>
+                <div class="plan-feature"><span class="check">&#10003;</span> Guided onboarding &amp; rollout</div>
+                <div class="plan-feature"><span class="check">&#10003;</span> Dedicated support</div>
+            </div>
+        </div>
     </div>
 
     <!-- FAQ -->

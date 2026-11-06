@@ -12,7 +12,7 @@ const analysisService = require('../services/codeguard/analysisService');
 //   - Company Admins can see that scanning happened and the resulting
 //     risk score + recommended fixes, but not the raw vulnerability list.
 //   - The whole feature is gated to the Enterprise plan.
-const ENTERPRISE_PLANS = ['enterprise', 'enterprise_trial'];
+const ENTERPRISE_PLANS = ['enterprise', 'enterprise_trial', 'individual_pro', 'individual_pro_trial'];
 
 // Resolves the caller from their JWT and loads their current role/
 // department/plan from the DB (not trusted from the token, since those
@@ -50,7 +50,10 @@ function requireEnterprisePlan(req, res, next) {
     next();
 }
 
+// A solo individual has no department at all (no admin to assign them one), so on the
+// Individual Pro plan they're treated as their own IT department automatically.
 function isIT(user) {
+    if (!user.company && ['individual_pro', 'individual_pro_trial'].includes(user.plan)) return true;
     return (user.department || '').toLowerCase() === 'it';
 }
 function isAdmin(user) {

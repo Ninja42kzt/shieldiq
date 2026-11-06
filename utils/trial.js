@@ -3,8 +3,8 @@
 // and 3 days after it ended. Each is sent once per user (trial_reminders table).
 const { db } = require('../db');
 
-const TRIAL_PLANS = ['business_trial', 'enterprise_trial'];
-const PLAN_LABEL = { business_trial: 'Business', enterprise_trial: 'Enterprise' };
+const TRIAL_PLANS = ['business_trial', 'enterprise_trial', 'individual_trial', 'individual_pro_trial'];
+const PLAN_LABEL = { business_trial: 'Business', enterprise_trial: 'Enterprise', individual_trial: 'Individual', individual_pro_trial: 'Individual Pro' };
 const FROM = process.env.EMAIL_FROM || 'ShieldIQ <noreply@glitchfactory.co.ke>';
 const SITE = process.env.SITE_URL || 'https://shieldiq.glitchfactory.co.ke';
 const DAY = 24 * 60 * 60 * 1000;
@@ -34,26 +34,28 @@ function parseDate(v) {
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-function layout(name, bodyHtml, ctaText) {
+function layout(name, bodyHtml, ctaText, ctaHref = `${SITE}/billing`) {
     return `
     <div style="font-family:sans-serif;max-width:500px;margin:0 auto;padding:32px;background:#0A0A0F;color:#fff;border-radius:16px">
         <h1 style="color:#00D4FF">🛡️ ShieldIQ</h1>
         <h2>Hi ${esc(name)},</h2>
         ${bodyHtml}
-        <p style="margin:28px 0"><a href="${SITE}/billing" style="background:#00D4FF;color:#000;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700">${ctaText}</a></p>
+        <p style="margin:28px 0"><a href="${ctaHref}" style="background:#00D4FF;color:#000;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700">${ctaText}</a></p>
         <p style="color:#666;font-size:12px">You're receiving this because you started a ShieldIQ trial.</p>
     </div>`;
 }
 
 function buildEmail(kind, user, plan, expires) {
     const label = PLAN_LABEL[plan] || 'paid';
+    const isInd = String(plan).startsWith('individual');
+    const ctaHref = isInd ? `${SITE}/dashboard?upgrade=${String(plan).replace('_trial', '')}` : `${SITE}/billing`;
     const dateStr = expires ? expires.toUTCString().slice(0, 16) : '';
     if (kind === 'before_3d') {
         return {
             subject: `Your ShieldIQ ${label} trial ends soon`,
             html: layout(user.name,
-                `<p style="color:#ccc">Your <strong>${label}</strong> trial ends on <strong>${esc(dateStr)}</strong>. Upgrade before then to keep AI recommendations, the admin dashboard and team features without interruption.</p>`,
-                'Choose a plan'),
+                `<p style="color:#ccc">Your <strong>${label}</strong> trial ends on <strong>${esc(dateStr)}</strong>. Upgrade before then to keep ${isInd ? 'AI recommendations and your premium features' : 'AI recommendations, the admin dashboard and team features'} without interruption.</p>`,
+                'Choose a plan', ctaHref),
         };
     }
     if (kind === 'ended') {
@@ -61,14 +63,14 @@ function buildEmail(kind, user, plan, expires) {
             subject: 'Your ShieldIQ trial has ended',
             html: layout(user.name,
                 `<p style="color:#ccc">Your <strong>${label}</strong> trial has ended and your account is now on the <strong>Free</strong> plan. Your progress and results are saved.</p><p style="color:#ccc">Upgrade any time to get your ${label} features back.</p>`,
-                'Upgrade now'),
+                'Upgrade now', ctaHref),
         };
     }
     return {
-        subject: 'Still want ShieldIQ Business features?',
+        subject: `Still want ShieldIQ ${label} features?`,
         html: layout(user.name,
             `<p style="color:#ccc">Your trial ended a few days ago. Your training progress is safe, and you can pick up where you left off by upgrading.</p>`,
-            'See plans'),
+            'See plans', ctaHref),
     };
 }
 
@@ -115,7 +117,7 @@ async function processTrials({ now = new Date(), sender = resendSender } = {}) {
         if (expires <= now) {
             await db.execute({ sql: "UPDATE users SET plan = 'free' WHERE id = ? AND plan = ?", args: [u.id, u.plan] });
             if (await sendOnce(u, 'ended', u.plan, expires, sender, now)) out.ended++;
-        } else if (expires - now <= 3 * DAY) {
+        } else if (expires - now <= (String(u.plan).startsWith('individual') ? 1 : 3) * DAY) {
             if (await sendOnce(u, 'before_3d', u.plan, expires, sender, now)) out.before_3d++;
         }
     }

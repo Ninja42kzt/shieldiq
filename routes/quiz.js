@@ -111,19 +111,26 @@ router.get('/stats', auth, async (req, res) => {
     }
 });
  
-// Leaderboard
+// Leaderboard -- scoped to the caller's own company. A solo user (no company)
+// has no peers to rank against, so this is blocked for them entirely rather
+// than silently showing a cross-company list, which was the previous bug.
 router.get('/leaderboard', auth, async (req, res) => {
     try {
+        const caller = (await db.execute({ sql: 'SELECT company FROM users WHERE id = ?', args: [req.user.id] })).rows[0];
+        if (!caller || !caller.company) {
+            return res.status(403).json({ message: 'Leaderboard is only available for company accounts.' });
+        }
         const result = await db.execute({
             sql: `SELECT u.name, u.company,
                          ROUND(AVG(q.score)) as avg_score,
                          COUNT(q.id) as modules
                   FROM users u
                   JOIN quiz_results q ON u.id = q.user_id
+                  WHERE u.company = ?
                   GROUP BY u.id
                   ORDER BY avg_score DESC
                   LIMIT 20`,
-            args: [],
+            args: [caller.company],
         });
         res.json(result.rows);
     } catch (err) {

@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pricing - ShieldIQ</title>
+    <meta name="description" content="Simple, transparent pricing for cybersecurity awareness training. Free, Business, and Enterprise plans.">
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .pricing-hero {
+            padding: 140px 60px 80px;
+            text-align: center;
+        }
+        .pricing-hero h1 {
+            font-size: 52px;
+            font-weight: 800;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, #fff 0%, var(--primary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .pricing-hero p {
+            font-size: 18px;
+            color: var(--text-muted);
+            max-width: 540px;
+            margin: 0 auto 48px;
+            line-height: 1.7;
+        }
+        .plans-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 60px 100px;
+            align-items: start;
+        }
+        .plan-card {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 36px 28px;
+            transition: all 0.3s;
+            position: relative;
+        }
+        .plan-card:hover { transform: translateY(-4px); }
+        .plan-card.popular {
+            border-color: var(--primary);
+            background: rgba(0,212,255,0.04);
+        }
+        .plan-card.enterprise-plan {
+            border-color: rgba(191,90,242,0.3);
+            background: rgba(191,90,242,0.04);
+        }
+        .popular-badge {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--primary);
+            color: #000;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 16px;
+            border-radius: 20px;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+        .plan-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+        .plan-price {
+            font-size: 48px;
+            font-weight: 800;
+            color: var(--text);
+            margin-bottom: 4px;
+            line-height: 1;
+        }
+        .plan-price span {
+            font-size: 16px;
+            font-weight: 400;
+            color: var(--text-muted);
+        }
+        .plan-desc {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin: 12px 0 24px;
+            line-height: 1.5;
+        }
+        .plan-btn {
+            display: block;
+            width: 100%;
+            padding: 13px;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 14px;
+            text-decoration: none;
+            margin-bottom: 28px;
+            transition: all 0.3s;
+            cursor: pointer;
+            border: none;
+        }
+        .plan-btn-primary {
+            background: var(--primary);
+            color: #000;
+        }
+        .plan-btn-primary:hover { background: var(--primary-dark); }
+        .plan-btn-outline {
+            background: transparent;
+            border: 1px solid var(--glass-border);
+            color: var(--text);
+        }
+        .plan-btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+        .plan-btn-enterprise {
+            background: #bf5af2;
+            color: #fff;
+        }
+        .plan-btn-enterprise:hover { background: #a040d0; }
+        .plan-features {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .plan-feature {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            font-size: 14px;
+            color: var(--text);
+            line-height: 1.4;
+        }
+        .plan-feature .check { color: #34c759; flex-shrink: 0; font-size: 15px; }
+        .plan-feature .cross { color: var(--text-muted); flex-shrink: 0; }
+        .plan-feature.muted { color: var(--text-muted); }
+        .plan-divider {
+            border: none;
+            border-top: 1px solid var(--glass-border);
+            margin: 20px 0;
+        }
+        .faq-section {
+            padding: 80px 60px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .faq-section h2 {
+            font-size: 32px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .faq-item {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 12px;
+            cursor: pointer;
+        }
+        .faq-q {
+            font-size: 15px;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+        .faq-a {
+            font-size: 14px;
+            color: var(--text-muted);
+            line-height: 1.6;
+            margin-top: 12px;
+            display: none;
+        }
+        .faq-a.open { display: block; }
+
+        @media (max-width: 900px) {
+            .plans-grid { grid-template-columns: 1fr; padding: 0 20px 60px; gap: 20px; }
+            .pricing-hero { padding: 100px 20px 48px; }
+            .pricing-hero h1 { font-size: 36px; }
+            .faq-section { padding: 60px 20px; }
+        }
+        @media (max-width: 480px) {
+            .pricing-hero h1 { font-size: 28px; }
+            .plan-price { font-size: 40px; }
+            .plan-card { padding: 28px 20px; }
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="logo">🛡️ ShieldIQ</div>
+        <button class="nav-toggle" onclick="toggleNav()" aria-label="Menu">
+            <span></span><span></span><span></span>
+        </button>
+        <div class="nav-links" id="nav-links">
+            <a href="/">Home</a>
+            <a href="/pricing">Pricing</a>
+            <a href="/login">Login</a>
+            <a href="/register" class="btn-primary">Get Started</a>
+        </div>
+    </nav>
+
+    <div class="pricing-hero">
+        <div class="badge">💰 Simple Pricing</div>
+        <h1>Choose Your Plan</h1>
+        <p>Start free, upgrade when your team is ready. All plans include core cybersecurity training.</p>
+    </div>
+
+    <div class="plans-grid">
+
+        <!-- FREE -->
+        <div class="plan-card">
+            <div class="plan-name">Free</div>
+            <div class="plan-price">$0 <span>/ forever</span></div>
+            <p class="plan-desc">Perfect for individuals getting started with cybersecurity awareness.</p>
+            <a href="/register" class="plan-btn plan-btn-outline">Get Started Free</a>
+            <div class="plan-features">
+                <div class="plan-feature"><span class="check">✓</span> 3 training modules</div>
+                <div class="plan-feature"><span class="check">✓</span> Basic quiz & scoring</div>
+                <div class="plan-feature"><span class="check">✓</span> Personal progress tracking</div>
+                <div class="plan-feature"><span class="check">✓</span> Leaderboard access</div>
+                <div class="plan-feature"><span class="check">✓</span> Email MFA</div>
+                <hr class="plan-divider">
+                <div class="plan-feature muted"><span class="cross">✗</span> AI recommendations</div>
+                <div class="plan-feature muted"><span class="cross">✗</span> Admin dashboard</div>
+                <div class="plan-feature muted"><span class="cross">✗</span> Team management</div>
+                <div class="plan-feature muted"><span class="cross">✗</span> Weak area analysis</div>
+                <div class="plan-feature muted"><span class="cross">✗</span> CodeGuard code scanning</div>
+            </div>
+        </div>
+
+        <!-- BUSINESS -->
+        <div class="plan-card popular">
+            <div class="popular-badge">⭐ MOST POPULAR</div>
+            <div class="plan-name">Business</div>
+            <div class="plan-price">$8 <span>/ user / mo</span></div>
+            <p class="plan-desc">For IT teams managing cybersecurity awareness across the organization.</p>
+            <a href="/register-company" class="plan-btn plan-btn-primary">Start 7-Day Free Trial</a>
+            <div class="plan-features">
+                <div class="plan-feature"><span class="check">✓</span> All 6 training modules</div>
+                <div class="plan-feature"><span class="check">✓</span> 🤖 AI-powered recommendations</div>
+                <div class="plan-feature"><span class="check">✓</span> Admin dashboard</div>
+                <div class="plan-feature"><span class="check">✓</span> Team risk dashboard</div>
+                <div class="plan-feature"><span class="check">✓</span> Weak area analysis per user</div>
+                <div class="plan-feature"><span class="check">✓</span> High-risk user alerts</div>
+                <div class="plan-feature"><span class="check">✓</span> Up to 10 team members</div>
+                <div class="plan-feature"><span class="check">✓</span> Priority email support</div>
+                <hr class="plan-divider">
+                <div class="plan-feature muted"><span class="cross">✗</span> Custom modules</div>
+                <div class="plan-feature muted"><span class="cross">✗</span> API access</div>
+                <div class="plan-feature muted"><span class="cross">✗</span> White-label</div>
+                <div class="plan-feature muted"><span class="cross">✗</span> CodeGuard code scanning</div>
+            </div>
+        </div>
+
+        <!-- ENTERPRISE -->
+        <div class="plan-card enterprise-plan">
+            <div class="plan-name" style="color:#bf5af2">Enterprise</div>
+            <div class="plan-price">$15 <span>/ user / mo</span></div>
+            <p class="plan-desc">For large organizations needing full control, compliance, and custom training.</p>
+            <a href="/register-company" class="plan-btn plan-btn-enterprise">Start 7-Day Free Trial</a>
+            <div class="plan-features">
+                <div class="plan-feature"><span class="check">✓</span> Everything in Business</div>
+                <div class="plan-feature"><span class="check">✓</span> Custom training modules</div>
+                <div class="plan-feature"><span class="check">✓</span> Full API access</div>
+                <div class="plan-feature"><span class="check">✓</span> White-label option</div>
+                <div class="plan-feature"><span class="check">✓</span> Dedicated account manager</div>
+                <div class="plan-feature"><span class="check">✓</span> SLA guarantee</div>
+                <div class="plan-feature"><span class="check">✓</span> Up to 30 team members</div>
+                <div class="plan-feature"><span class="check">✓</span> Phone & email support</div>
+                <div class="plan-feature"><span class="check">✓</span> 🔍 CodeGuard code security scanning (IT department)</div>
+                <div class="plan-feature"><span class="check">✓</span> Compliance documentation</div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- FAQ -->
+    <div class="faq-section">
+        <h2>Frequently Asked Questions</h2>
+
+        <div class="faq-item" onclick="toggleFaq(this)">
+            <div class="faq-q">Do I need a credit card for the free plan? <span>+</span></div>
+            <div class="faq-a">No. The free plan requires no payment details. Just register and start training immediately.</div>
+        </div>
+        <div class="faq-item" onclick="toggleFaq(this)">
+            <div class="faq-q">What happens after my 7-day trial ends? <span>+</span></div>
+            <div class="faq-a">After 7 days, your account is automatically downgraded to the free plan unless you choose to continue. You will receive a reminder email on day 6 of your trial.</div>
+        </div>
+        <div class="faq-item" onclick="toggleFaq(this)">
+            <div class="faq-q">How does the AI feature work? <span>+</span></div>
+            <div class="faq-a">The AI analyzes each team member's quiz results, identifies their weak areas, and generates personalized training recommendations. It's available on Business and Enterprise plans only.</div>
+        </div>
+        <div class="faq-item" onclick="toggleFaq(this)">
+            <div class="faq-q">Can I add more than 10 users on Business? <span>+</span></div>
+            <div class="faq-a">Business supports up to 10 users at $8/user/month (max $80/month). If you need more, upgrade to Enterprise which supports up to 30 users, or contact us for a custom plan.</div>
+        </div>
+        <div class="faq-item" onclick="toggleFaq(this)">
+            <div class="faq-q">Is payment secure? <span>+</span></div>
+            <div class="faq-a">Yes. All payment processing is 256-bit SSL encrypted and PCI DSS compliant. We place a $1 hold to verify your card, which is automatically released within 2 minutes.</div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="footer-content">
+            <div>🛡️ ShieldIQ &copy; 2026</div>
+            <div>Cybersecurity awareness, made simple.</div>
+            <div><a href="/pricing" style="color:var(--text-muted);text-decoration:none">Pricing</a> · <a href="mailto:support@shieldiq.com" style="color:var(--text-muted);text-decoration:none">Support</a></div>
+        </div>
+    </footer>
+
+    <script>
+        function toggleNav() {
+            document.getElementById('nav-links').classList.toggle('open');
+        }
+        function toggleFaq(el) {
+            const a = el.querySelector('.faq-a');
+            const icon = el.querySelector('.faq-q span');
+            a.classList.toggle('open');
+            icon.textContent = a.classList.contains('open') ? '−' : '+';
+        }
+    </script>
+</body>
+</html>

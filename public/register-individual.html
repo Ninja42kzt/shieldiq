@@ -194,6 +194,7 @@
                     successMsg.textContent = 'Account verified! Redirecting to login...';
                     successMsg.style.display = 'block';
                     errorMsg.style.display = 'none';
+                    try { const p = new URLSearchParams(window.location.search).get('plan'); if (p === 'individual' || p === 'individual_pro') localStorage.setItem('pendingPlan', p); } catch (e) {}
                     setTimeout(() => window.location.href = '/login', 1500);
                 } else {
                     errorMsg.textContent = data.message || 'Invalid code';

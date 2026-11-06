@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShieldIQ - Training</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/quiz.css">
+    <style>
+        .training-container { max-width: 800px; margin: 0 auto; padding: 40px 20px; }
+        .training-header { text-align: center; margin-bottom: 40px; }
+        .training-header h1 { font-size: 32px; font-weight: 800; margin-bottom: 8px; }
+        .training-header p { color: var(--text-muted); }
+        .lesson-card { background: var(--glass); border: 1px solid var(--glass-border); border-radius: 16px; padding: 28px; margin-bottom: 24px; }
+        .lesson-topic { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--primary); margin-bottom: 8px; }
+        .lesson-title { font-size: 22px; font-weight: 700; margin-bottom: 16px; }
+        .lesson-content { color: var(--text-muted); line-height: 1.8; margin-bottom: 20px; font-size: 15px; }
+        .tips-list { list-style: none; padding: 0; margin-bottom: 20px; }
+        .tips-list li { padding: 10px 16px; margin-bottom: 8px; background: rgba(0,212,255,0.05); border-left: 3px solid var(--primary); border-radius: 4px; font-size: 14px; }
+        .red-flag { background: rgba(255,107,107,0.08); border: 1px solid rgba(255,107,107,0.2); border-radius: 10px; padding: 14px 16px; font-size: 14px; color: #ff6b6b; }
+        .red-flag strong { display: block; margin-bottom: 4px; }
+        .loading-state { text-align: center; padding: 60px 20px; }
+        .spinner { width: 40px; height: 40px; border: 3px solid var(--glass-border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .action-btns { display: flex; gap: 12px; margin-top: 40px; }
+        .action-btns button { flex: 1; padding: 14px; border-radius: 10px; font-weight: 700; font-size: 15px; cursor: pointer; border: none; }
+        .btn-retest { background: var(--primary); color: #000; }
+        .btn-dashboard { background: var(--glass); border: 1px solid var(--glass-border) !important; color: var(--text); }
+        .progress-steps { display: flex; justify-content: center; gap: 8px; margin-bottom: 40px; }
+        .step { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-muted); }
+        .step.active { color: var(--primary); font-weight: 600; }
+        .step.done { color: #34c759; }
+        .step-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+        .step-line { width: 40px; height: 1px; background: var(--glass-border); }
+    </style>
+</head>
+<body class="dash-body">
+    <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+    <aside class="sidebar">
+        <div class="sidebar-logo">🛡️ ShieldIQ</div>
+        <nav class="sidebar-nav">
+            <a href="/dashboard" class="nav-item"><span>📊</span> Dashboard</a>
+            <a href="/quiz" class="nav-item active"><span>🎯</span> Training</a>
+            <a href="/progress" class="nav-item"><span>📈</span> My Progress</a>
+            <a href="/leaderboard" class="nav-item"><span>🏆</span> Leaderboard</a>
+            <a href="/settings" class="nav-item"><span>⚙️</span> Settings</a>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar" id="user-avatar">U</div>
+                <div class="user-details">
+                    <span class="user-name" id="user-name">Loading...</span>
+                    <span class="user-company" id="user-company">Loading...</span>
+                </div>
+            </div>
+            <button class="logout-btn" onclick="logout()">↩ Logout</button>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <div class="training-container">
+
+            <!-- Progress Steps -->
+            <div class="progress-steps">
+                <div class="step done"><div class="step-dot"></div> Test</div>
+                <div class="step-line"></div>
+                <div class="step active"><div class="step-dot"></div> Learn</div>
+                <div class="step-line"></div>
+                <div class="step"><div class="step-dot"></div> Retest</div>
+            </div>
+
+            <div class="training-header">
+                <div style="font-size:48px;margin-bottom:16px">📚</div>
+                <h1>Personalised Training</h1>
+                <p id="training-subtitle">Generating lessons based on your weak areas...</p>
+            </div>
+
+            <div id="training-content">
+                <div class="loading-state">
+                    <div class="spinner"></div>
+                    <p style="color:var(--text-muted)">ShieldIQ AI is preparing your personalised lessons...</p>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+const token = localStorage.getItem('token');
+if (!token) window.location.href = '/login';
+
+const userData = JSON.parse(localStorage.getItem('user') || '{}');
+document.getElementById('user-name').textContent = userData.name || 'User';
+document.getElementById('user-company').textContent = userData.company || '';
+document.getElementById('user-avatar').textContent = (userData.name || 'U')[0].toUpperCase();
+
+const params = new URLSearchParams(window.location.search);
+const module = params.get('module') || localStorage.getItem('training_module') || 'phishing';
+const weakAreas = JSON.parse(localStorage.getItem('training_weak_areas') || '[]');
+
+const moduleNames = {
+    phishing: 'Phishing Awareness', passwords: 'Password Security',
+    social: 'Social Engineering', devices: 'Device Security',
+    data: 'Data Protection', incident: 'Incident Response'
+};
+
+document.getElementById('training-subtitle').textContent =
+    `Personalised lessons for ${moduleNames[module] || module}`;
+
+async function loadTraining() {
+    try {
+        const res = await fetch('/api/quiz/training', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ weakAreas, module })
+        });
+        const data = await res.json();
+        const lessons = data.content?.lessons || [];
+
+        if (!lessons.length) {
+            document.getElementById('training-content').innerHTML = `
+                <div style="text-align:center;padding:40px">
+                    <p style="color:var(--text-muted)">Could not generate training content. Please try again.</p>
+                    <button onclick="window.location.href='/dashboard'" class="btn-primary" style="margin-top:16px">Back to Dashboard</button>
+                </div>`;
+            return;
+        }
+
+        let html = '';
+        lessons.forEach((lesson, i) => {
+            html += `
+                <div class="lesson-card">
+                    <div class="lesson-topic">Lesson ${i + 1} · ${lesson.topic}</div>
+                    <h2 class="lesson-title">${lesson.title}</h2>
+                    <div class="lesson-content">${lesson.content.replace(/\n/g, '<br><br>')}</div>
+                    ${lesson.tips?.length ? `
+                        <h4 style="margin-bottom:10px;font-size:14px">💡 Practical Tips</h4>
+                        <ul class="tips-list">
+                            ${lesson.tips.map(t => `<li>✓ ${t}</li>`).join('')}
+                        </ul>
+                    ` : ''}
+                    ${lesson.redFlag ? `
+                        <div class="red-flag">
+                            <strong>🚩 Red Flag to Watch For:</strong>
+                            ${lesson.redFlag}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        });
+
+        html += `
+            <div class="action-btns">
+                <button class="btn-retest" onclick="startRetest()">🎯 Test Your Knowledge →</button>
+                <button class="btn-dashboard" onclick="window.location.href='/dashboard'">Back to Dashboard</button>
+            </div>
+        `;
+
+        document.getElementById('training-content').innerHTML = html;
+
+    } catch (err) {
+        document.getElementById('training-content').innerHTML = `
+            <div style="text-align:center;padding:40px">
+                <p style="color:#ff6b6b">Error loading training content: ${err.message}</p>
+                <button onclick="loadTraining()" style="margin-top:16px;background:var(--primary);color:#000;border:none;padding:10px 20px;border-radius:8px;cursor:pointer">Retry</button>
+            </div>`;
+    }
+}
+
+function startRetest() {
+    // Store that this is a retest so quiz focuses on weak areas
+    localStorage.setItem('quiz_retest', 'true');
+    window.location.href = `/quiz?cat=${module}&retest=true`;
+}
+
+function logout() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.location.href = '/login';
+}
+
+function toggleSidebar() {
+    document.querySelector('.sidebar').classList.toggle('open');
+    document.getElementById('sidebar-overlay').classList.toggle('open');
+}
+function closeSidebar() {
+    document.querySelector('.sidebar').classList.remove('open');
+    document.getElementById('sidebar-overlay').classList.remove('open');
+}
+
+loadTraining();
+    </script>
+</body>
+</html>

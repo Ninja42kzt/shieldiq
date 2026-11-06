@@ -25,8 +25,8 @@ if ((userData.department || '').toLowerCase() === 'it') {
 }
 
 // Plan config
-const isPremium = ['business_trial', 'business', 'enterprise_trial', 'enterprise'].includes(plan);
-const isEnterprise = ['enterprise_trial', 'enterprise'].includes(plan);
+const isPremium = ['business_trial', 'business', 'enterprise_trial', 'enterprise', 'individual_trial', 'individual', 'individual_pro_trial', 'individual_pro'].includes(plan);
+const isEnterprise = ['enterprise_trial', 'enterprise', 'individual_pro_trial', 'individual_pro'].includes(plan);
 
 if (userData.name) {
     document.getElementById('welcome-name').textContent = userData.name;
@@ -41,12 +41,16 @@ const planBadges = {
     business_trial: { label: 'Business Trial', color: '#00D4FF' },
     business: { label: 'Business', color: '#00D4FF' },
     enterprise_trial: { label: 'Enterprise Trial', color: '#bf5af2' },
-    enterprise: { label: 'Enterprise', color: '#bf5af2' }
+    enterprise: { label: 'Enterprise', color: '#bf5af2' },
+    individual_trial: { label: 'Individual Trial', color: '#00D4FF' },
+    individual: { label: 'Individual', color: '#00D4FF' },
+    individual_pro_trial: { label: 'Pro Trial', color: '#bf5af2' },
+    individual_pro: { label: 'Individual Pro', color: '#bf5af2' }
 };
 const badge = planBadges[plan] || planBadges.free;
 const companyEl = document.getElementById('user-company');
 if (companyEl) {
-    companyEl.innerHTML = `${userData.company || 'Company'} <span style="background:${badge.color}22;color:${badge.color};font-size:10px;padding:2px 6px;border-radius:4px;margin-left:4px">${badge.label}</span>`;
+    companyEl.innerHTML = `${userData.company || 'Personal'} <span style="background:${badge.color}22;color:${badge.color};font-size:10px;padding:2px 6px;border-radius:4px;margin-left:4px">${badge.label}</span>`;
 }
 
 // (duplicate redirect removed -- handled once above, now company-gated)
@@ -74,7 +78,7 @@ async function loadRecommendations() {
         if (section) section.innerHTML = `
             <h2>Recommended for You</h2>
             <div style="background:var(--glass);border:1px solid var(--glass-border);border-radius:12px;padding:24px;text-align:center">
-                <p style="color:var(--text-muted);margin-bottom:12px">🤖 AI-powered recommendations are available on Business and Enterprise plans.</p>
+                <p style="color:var(--text-muted);margin-bottom:12px">🤖 AI-powered recommendations are available on all paid plans.</p>
                 <a href="/pricing" style="color:var(--primary);font-weight:600;font-size:14px">Upgrade to unlock →</a>
             </div>
         `;
@@ -195,3 +199,69 @@ function logout() {
 loadStats();
 loadRecommendations();
 renderModules();
+
+// ---- Upgrade flow for individual plans ----
+(function () {
+    const btn = document.getElementById('upgrade-nav-btn');
+    if (btn && (plan === 'free' || plan === 'individual_trial' || plan === 'individual_pro_trial') && !userData.company) btn.style.display = '';
+})();
+
+function openUpgradeModal(highlight) {
+    const m = document.getElementById('upgrade-modal');
+    if (!m) return;
+    const inTrial = String(plan).endsWith('_trial');
+    m.querySelectorAll('button').forEach(function (b) {
+        if ((b.getAttribute('onclick') || '').indexOf("'trial'") !== -1) b.style.display = inTrial ? 'none' : '';
+    });
+    ['individual', 'individual_pro'].forEach(function (k) {
+        const c = document.getElementById('up-card-' + k);
+        if (c) c.style.borderColor = (k === highlight) ? '#00d4ff' : '#2a2a33';
+    });
+    m.style.display = 'flex';
+}
+
+function closeUpgradeModal() {
+    document.getElementById('upgrade-modal').style.display = 'none';
+}
+
+async function choosePlan(planKey, action) {
+    const err = document.getElementById('upgrade-error');
+    err.style.display = 'none';
+    const endpoint = action === 'trial' ? '/api/billing/start-trial-paypal' : '/api/billing/paypal/subscribe';
+    try {
+        const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+            body: JSON.stringify({
+                plan: planKey,
+                returnPath: '/dashboard?status=success',
+                cancelPath: '/dashboard?status=cancelled',
+            }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Could not start checkout');
+        window.location.href = data.approveUrl;
+    } catch (e) {
+        err.textContent = e.message;
+        err.style.display = 'block';
+    }
+}
+
+(function () {
+    const q = new URLSearchParams(window.location.search);
+    const upgradeStatus = q.get('status');
+    if (upgradeStatus === 'success') {
+        alert('PayPal approved! Your plan updates within a minute or two once PayPal confirms - refresh shortly.');
+        return;
+    }
+    if (upgradeStatus === 'cancelled') {
+        alert('Checkout cancelled. No charge was made.');
+        return;
+    }
+    let pending = null;
+    try { pending = localStorage.getItem('pendingPlan'); localStorage.removeItem('pendingPlan'); } catch (e) {}
+    const want = q.get('upgrade') || pending;
+    if ((plan === 'free' || String(plan).endsWith('_trial')) && !userData.company && (want === 'individual' || want === 'individual_pro')) {
+        openUpgradeModal(want);
+    }
+})();

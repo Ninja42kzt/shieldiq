@@ -5,7 +5,7 @@ const { plans } = require('../config/plans');
 const paypal = require('../services/paypal');
 
 const router = express.Router();
-const TRIAL_PLANS = ['business_trial', 'enterprise_trial'];
+const TRIAL_PLANS = ['business_trial', 'enterprise_trial', 'individual_trial', 'individual_pro_trial'];
 const SITE = process.env.SITE_URL || 'https://shieldiq.glitchfactory.co.ke';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -76,7 +76,7 @@ router.post('/start-trial-paypal', auth, requireAdmin, async (req, res) => {
 
         const trialPlanKey = `${planKey}_trial`;
         const trialExpiry = new Date();
-        trialExpiry.setDate(trialExpiry.getDate() + 7);
+        trialExpiry.setDate(trialExpiry.getDate() + (planKey.startsWith('individual') ? 3 : 7));
         await db.execute({
             sql: 'UPDATE users SET plan = ?, trial_expires_at = ? WHERE id = ?',
             args: [trialPlanKey, trialExpiry.toISOString(), req.user.id],
