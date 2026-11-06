@@ -9,35 +9,115 @@
  .wrap{max-width:720px;margin:60px auto;padding:0 20px}
  .card{background:#111;border:1px solid #2a2a33;border-radius:14px;padding:24px;margin:16px 0}
  button{background:#00D4FF;color:#000;border:0;border-radius:8px;padding:12px 22px;font-weight:700;cursor:pointer}
- button:disabled{opacity:.5} .muted{color:#999} #msg{margin-top:12px}
+ button:disabled{opacity:.5;cursor:default} .muted{color:#999} #msg{margin-top:12px}
+ a{color:#00D4FF}
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>🛡️ Billing</h1>
   <p class="muted" id="current">Loading…</p>
-  <div class="card"><h2>Business — $8 / user / month</h2>
-    <p class="muted">Pay with PayPal. If you're still in your free trial, you won't be charged until it ends.</p>
-    <button onclick="subscribe('business')">Subscribe with PayPal</button></div>
-  <div class="card"><h2>Enterprise — $15 / user / month</h2>
-    <p class="muted">Pay with PayPal. If you're still in your free trial, you won't be charged until it ends.</p>
-    <button onclick="subscribe('enterprise')">Subscribe with PayPal</button></div>
+  <div id="plans"></div>
+  <div class="card">
+    <h2>Cancel or manage your subscription</h2>
+    <p class="muted">You can cancel here, or in
+      <a href="https://www.paypal.com/myaccount/autopay/" target="_blank" rel="noopener">PayPal automatic payments</a>.
+      Your plan returns to Free once PayPal confirms the cancellation.</p>
+    <button id="cancel-btn" style="display:none;background:#ff6b6b;color:#000" onclick="cancelSub()">Cancel subscription</button>
+  </div>
   <p id="msg" class="muted"></p>
+  <p><a href="/dashboard">&larr; Back to dashboard</a></p>
 </div>
 <script>
 const token = localStorage.getItem('token');
 if (!token) location.href = '/login';
+
+let user = {};
+try { user = JSON.parse(localStorage.getItem('user') || '{}'); } catch (e) {}
+
+const LABELS = {
+  free: 'Free',
+  business_trial: 'Business (trial)', business: 'Business',
+  enterprise_trial: 'Enterprise (trial)', enterprise: 'Enterprise',
+  individual_trial: 'Individual (trial)', individual: 'Individual',
+  individual_pro_trial: 'Individual Pro (trial)', individual_pro: 'Individual Pro'
+};
+
+const PLANS = user.company
+  ? [
+      { key: 'business', name: 'Business', price: '$5 / user / month' },
+      { key: 'enterprise', name: 'Enterprise', price: '$8 / user / month' }
+    ]
+  : [
+      { key: 'individual', name: 'Individual', price: '$3 / month' },
+      { key: 'individual_pro', name: 'Individual Pro', price: '$6 / month' }
+    ];
+
+const plansEl = document.getElementById('plans');
+const msg = document.getElementById('msg');
+
+function render(currentPlan) {
+  plansEl.textContent = '';
+  PLANS.forEach(function (p) {
+    const card = document.createElement('div');
+    card.className = 'card';
+    const h = document.createElement('h2');
+    h.textContent = p.name + ' \u2014 ' + p.price;
+    const d = document.createElement('p');
+    d.className = 'muted';
+    d.textContent = "Pay with PayPal. If you're still in your free trial, you won't be charged until it ends.";
+    const b = document.createElement('button');
+    const isCurrent = currentPlan === p.key;
+    b.textContent = isCurrent ? 'Current plan' : 'Subscribe with PayPal';
+    b.disabled = isCurrent;
+    b.onclick = function () { subscribe(p.key); };
+    card.appendChild(h); card.appendChild(d); card.appendChild(b);
+    plansEl.appendChild(card);
+  });
+}
+
+render(user.plan || 'free');
+
 const q = new URLSearchParams(location.search).get('status');
-if (q === 'success') document.getElementById('msg').textContent = 'Thanks! Your plan updates as soon as PayPal confirms (usually within a minute). Refresh this page, then log in again to see it.';
-if (q === 'cancelled') document.getElementById('msg').textContent = 'Subscription cancelled. You have not been charged.';
+if (q === 'success') msg.textContent = 'Thanks! Your plan updates as soon as PayPal confirms (usually within a minute). Refresh this page, then log in again to see it.';
+if (q === 'cancelled') msg.textContent = 'Subscription cancelled. You have not been charged.';
+
 fetch('/api/billing/status', { headers: { Authorization: 'Bearer ' + token } })
-  .then(r => r.json()).then(d => document.getElementById('current').textContent = 'Current plan: ' + (d.plan || 'free'))
-  .catch(() => document.getElementById('current').textContent = '');
-async function subscribe(plan) {
-  const msg = document.getElementById('msg'); msg.textContent = 'Opening PayPal…';
+  .then(function (r) { return r.json(); })
+  .then(function (d) {
+    const plan = d.plan || 'free';
+    let text = 'Current plan: ' + (LABELS[plan] || plan);
+    const s = (d.subscriptions || [])[0];
+    if (s && s.status) text += ' \u00b7 Subscription: ' + String(s.status).toLowerCase();
+    document.getElementById('current').textContent = text;
+    if (s && String(s.status).toUpperCase() === 'ACTIVE') document.getElementById('cancel-btn').style.display = '';
+    render(plan);
+  })
+  .catch(function () { document.getElementById('current').textContent = ''; });
+
+async function cancelSub() {
+  if (!confirm('Cancel your subscription? Your plan switches to Free once PayPal confirms.')) return;
+  msg.textContent = 'Cancelling...';
   try {
-    const r = await fetch('/api/billing/paypal/subscribe', { method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token }, body: JSON.stringify({ plan }) });
+    const r = await fetch('/api/billing/paypal/cancel', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token }
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.message);
+    msg.textContent = d.message;
+    document.getElementById('cancel-btn').style.display = 'none';
+  } catch (e) { msg.textContent = 'Error: ' + e.message; }
+}
+
+async function subscribe(plan) {
+  msg.textContent = 'Opening PayPal\u2026';
+  try {
+    const r = await fetch('/api/billing/paypal/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify({ plan: plan })
+    });
     const d = await r.json();
     if (!r.ok) throw new Error(d.message);
     location.href = d.approveUrl;
