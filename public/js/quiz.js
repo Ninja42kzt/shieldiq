@@ -270,3 +270,6 @@ function logout() {
     localStorage.removeItem('user');
     window.location.href = '/login';
 }
+if (!userData.company) {
+    document.querySelectorAll('a[href="/leaderboard"]').forEach(el => el.style.display = 'none');
+}

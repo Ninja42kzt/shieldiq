@@ -140,6 +140,7 @@
         const token = localStorage.getItem('token');
         if (!token) window.location.href = '/login';
         const userData = JSON.parse(localStorage.getItem('user') || '{}');
+        if (!userData.company) { document.querySelectorAll('a[href="/leaderboard"]').forEach(el => el.style.display = 'none'); }
 
         // Populate sidebar
         document.getElementById('user-name').textContent = userData.name || 'User';

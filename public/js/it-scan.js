@@ -2,7 +2,7 @@ const token = localStorage.getItem('token');
 if (!token) window.location.href = '/login';
 
 const userData = JSON.parse(localStorage.getItem('user') || '{}');
-const ENTERPRISE_PLANS = ['enterprise', 'enterprise_trial'];
+const ENTERPRISE_PLANS = ['enterprise', 'enterprise_trial', 'individual_pro'];
 
 if (userData.name) {
     document.getElementById('user-name').textContent = userData.name;
@@ -10,7 +10,10 @@ if (userData.name) {
     document.getElementById('user-avatar').textContent = userData.name[0].toUpperCase();
 }
 
-const isIT = (userData.department || '').toLowerCase() === 'it';
+// A solo individual has no department (no admin to assign one) -- on Individual Pro
+// they count as their own IT department, matching the server-side rule in itScan.js.
+const isIT = (!userData.company && userData.plan === 'individual_pro')
+    || (userData.department || '').toLowerCase() === 'it';
 const isEnterprise = ENTERPRISE_PLANS.includes(userData.plan);
 
 function showGate(id) {
@@ -125,3 +128,7 @@ async function viewScan(id) {
 function toggleSidebar() { document.querySelector('.sidebar').classList.toggle('open'); document.getElementById('sidebar-overlay').classList.toggle('show'); }
 function closeSidebar() { document.querySelector('.sidebar').classList.remove('open'); document.getElementById('sidebar-overlay').classList.remove('show'); }
 function logout() { localStorage.clear(); window.location.href = '/login'; }
+
+if (!userData.company) {
+    document.querySelectorAll('a[href="/leaderboard"]').forEach(el => el.style.display = 'none');
+}

@@ -92,6 +92,7 @@ const token = localStorage.getItem('token');
 if (!token) window.location.href = '/login';
 
 const userData = JSON.parse(localStorage.getItem('user') || '{}');
+        if (!userData.company) { document.querySelectorAll('a[href="/leaderboard"]').forEach(el => el.style.display = 'none'); }
 document.getElementById('user-name').textContent = userData.name || 'User';
 document.getElementById('user-company').textContent = userData.company || '';
 document.getElementById('user-avatar').textContent = (userData.name || 'U')[0].toUpperCase();

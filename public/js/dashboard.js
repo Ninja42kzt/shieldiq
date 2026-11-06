@@ -8,8 +8,15 @@ function parseJWT(token) {
 const userData = JSON.parse(localStorage.getItem('user') || '{}');
 const plan = userData.plan || 'free';
 
-// Redirect admin to admin panel
-if (userData.role === 'admin') { window.location.href = '/admin'; }
+// Redirect to admin panel ONLY for company admins -- a solo individual is also
+// role='admin' (so they can use the same billing/upgrade flow), but has no team to
+// manage, so they stay on this page instead of landing on company-admin UI.
+if (userData.role === 'admin' && userData.company) { window.location.href = '/admin'; }
+
+// Leaderboard compares teammates within a company -- meaningless and hidden for a solo user.
+if (!userData.company) {
+    document.querySelectorAll('a[href="/leaderboard"]').forEach(el => el.style.display = 'none');
+}
 
 // CodeGuard nav link: only IT department employees see it
 if ((userData.department || '').toLowerCase() === 'it') {
@@ -42,10 +49,7 @@ if (companyEl) {
     companyEl.innerHTML = `${userData.company || 'Company'} <span style="background:${badge.color}22;color:${badge.color};font-size:10px;padding:2px 6px;border-radius:4px;margin-left:4px">${badge.label}</span>`;
 }
 
-// Redirect admin users to admin panel
-if (userData.role === 'admin') {
-    window.location.href = '/admin';
-}
+// (duplicate redirect removed -- handled once above, now company-gated)
 
 async function loadStats() {
     try {

@@ -208,3 +208,6 @@ function logout() {
 }
 
 loadProgress();
+if (!userData.company) {
+    document.querySelectorAll('a[href="/leaderboard"]').forEach(el => el.style.display = 'none');
+}
