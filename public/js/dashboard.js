@@ -261,13 +261,30 @@ function openUpgradeModal(highlight) {
     const m = document.getElementById('upgrade-modal');
     if (!m) return;
     m.querySelectorAll('button').forEach(function (b) {
-        if ((b.getAttribute('onclick') || '').indexOf("'trial'") !== -1) b.style.display = '';
+        if ((b.getAttribute('onclick') || '').indexOf("'trial'") !== -1) b.style.display = 'none';
     });
     ['individual', 'individual_pro'].forEach(function (k) {
         const c = document.getElementById('up-card-' + k);
         if (c) c.style.borderColor = (k === highlight) ? '#00d4ff' : '#2a2a33';
     });
     m.style.display = 'flex';
+    // Trial buttons only come back if the server says this account can still start a trial.
+    fetch('/api/billing/status', { headers: { 'Authorization': 'Bearer ' + token } })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+            const canTrial = d.trialAvailable === true;
+            m.querySelectorAll('button').forEach(function (b) {
+                if ((b.getAttribute('onclick') || '').indexOf("'trial'") !== -1) b.style.display = canTrial ? '' : 'none';
+            });
+            if (!canTrial) {
+                m.querySelectorAll('*').forEach(function (el) {
+                    if (el.children.length === 0 && /free 3-day trial/i.test(el.textContent)) {
+                        el.textContent = 'Your free trial has already been used. Subscribe to continue - you will be charged today.';
+                    }
+                });
+            }
+        })
+        .catch(function () {});
 }
 
 function closeUpgradeModal() {

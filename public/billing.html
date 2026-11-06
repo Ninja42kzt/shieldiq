@@ -65,7 +65,9 @@ function render(currentPlan) {
     h.textContent = p.name + ' \u2014 ' + p.price;
     const d = document.createElement('p');
     d.className = 'muted';
-    d.textContent = "Pay with PayPal. If you're still in your free trial, you won't be charged until it ends.";
+    d.textContent = (window.__trialAvailable === true)
+      ? "Pay with PayPal. If you're still in your free trial, you won't be charged until it ends."
+      : (window.__trialAvailable === false ? "Pay with PayPal. You will be charged today." : "Pay with PayPal.");
     const b = document.createElement('button');
     const isCurrent = currentPlan === p.key;
     b.textContent = isCurrent ? 'Current plan' : (currentPlan !== 'free' ? 'Cancel current plan to switch' : 'Subscribe with PayPal');
@@ -93,6 +95,7 @@ fetch('/api/billing/paypal/sync', { method: 'POST', headers: { Authorization: 'B
     if (s && s.status) text += ' \u00b7 Subscription: ' + String(s.status).toLowerCase();
     document.getElementById('current').textContent = text;
     if (s && String(s.status).toUpperCase() === 'ACTIVE') document.getElementById('cancel-btn').style.display = '';
+    window.__trialAvailable = d.trialAvailable;
     render(plan);
   })
   .catch(function () { document.getElementById('current').textContent = ''; });
