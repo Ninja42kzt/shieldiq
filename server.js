@@ -90,7 +90,7 @@ const pages = [
     ['/leaderboard', 'leaderboard.html'], ['/settings', 'settings.html'],
     ['/pricing', 'pricing.html'], ['/admin', 'admin.html'],
     ['/about', 'about.html'], ['/contact', 'contact.html'], ['/terms', 'terms.html'],
-    ['/privacy', 'privacy.html'], ['/register-company', 'register-company.html'], ['/training', 'training.html'],
+    ['/privacy', 'privacy.html'], ['/register-company', 'register-company.html'], ['/register-individual', 'register-individual.html'], ['/training', 'training.html'],
     ['/it-scan', 'it-scan.html'], ['/billing', 'billing.html'],
 ];
 
