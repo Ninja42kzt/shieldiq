@@ -191,6 +191,10 @@
             .plan-price { font-size: 40px; }
             .plan-card { padding: 28px 20px; }
         }
+    
+        .plan-tabs { display:flex; justify-content:center; gap:8px; margin:0 auto 32px; padding:6px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:12px; width:fit-content; }
+        .plan-tab { background:none; border:none; color:#8b8b99; font-size:14px; font-weight:600; padding:10px 28px; border-radius:8px; cursor:pointer; font-family:inherit; }
+        .plan-tab.active { background:#00d4ff; color:#000; }
     </style>
 </head>
 <body>
@@ -213,7 +217,68 @@
         <p>Start free, upgrade when your team is ready. All plans include core cybersecurity training.</p>
     </div>
 
-    <div class="plans-grid">
+    <div class="plan-tabs">
+        <button class="plan-tab active" id="tab-individual" onclick="showPlanTab('individual')">Individual</button>
+        <button class="plan-tab" id="tab-team" onclick="showPlanTab('team')">Teams</button>
+    </div>
+
+    <div class="plans-grid" id="plans-individual">
+
+        <div class="plan-card">
+            <div class="plan-name">Free</div>
+            <div class="plan-price">$0 <span>/ forever</span></div>
+            <p class="plan-desc">Perfect for getting started with cybersecurity awareness.</p>
+            <a href="/register-individual" class="plan-btn plan-btn-outline">Get Started Free</a>
+            <div class="plan-features">
+                <div class="plan-feature"><span class="check">&#10003;</span> 3 training modules</div>
+                <div class="plan-feature"><span class="check">&#10003;</span> Basic quiz &amp; scoring</div>
+                <div class="plan-feature"><span class="check">&#10003;</span> Personal progress tracking</div>
+                <div class="plan-feature"><span class="check">&#10003;</span> Leaderboard access</div>
+                <div class="plan-feature"><span class="check">&#10003;</span> Email MFA</div>
+                <hr class="plan-divider">
+                <div class="plan-feature muted"><span class="cross">&#10007;</span> AI recommendations</div>
+                <div class="plan-feature muted"><span class="cross">&#10007;</span> Weak area analysis</div>
+                <div class="plan-feature muted"><span class="cross">&#10007;</span> CodeGuard code scanning</div>
+            </div>
+        </div>
+
+        <div class="plan-card popular">
+            <div class="popular-badge">&#11088; MOST POPULAR</div>
+            <div class="plan-name">Individual</div>
+            <div class="plan-price">$3 <span>/ mo</span></div>
+            <p class="plan-desc">For professionals and students who want AI-guided cybersecurity training.</p>
+            <a href="/register-individual?plan=individual" class="plan-btn plan-btn-primary">Start 3-Day Free Trial</a>
+            <div class="plan-features">
+                <div class="plan-feature"><span class="check">&#10003;</span> All 6 training modules</div>
+                <div class="plan-feature"><span class="check">&#10003;</span> AI-powered recommendations</div>
+                <div class="plan-feature"><span class="check">&#10003;</span> Weak area analysis</div>
+                <div class="plan-feature"><span class="check">&#10003;</span> Personal risk dashboard</div>
+                <div class="plan-feature"><span class="check">&#10003;</span> Priority email support</div>
+                <hr class="plan-divider">
+                <div class="plan-feature muted"><span class="cross">&#10007;</span> Custom modules</div>
+                <div class="plan-feature muted"><span class="cross">&#10007;</span> API access</div>
+                <div class="plan-feature muted"><span class="cross">&#10007;</span> CodeGuard code scanning</div>
+            </div>
+        </div>
+
+        <div class="plan-card enterprise-plan">
+            <div class="plan-name" style="color:#bf5af2">Individual Pro</div>
+            <div class="plan-price">$6 <span>/ mo</span></div>
+            <p class="plan-desc">For power users and developers who want everything unlocked.</p>
+            <a href="/register-individual?plan=individual_pro" class="plan-btn plan-btn-enterprise">Start 3-Day Free Trial</a>
+            <div class="plan-features">
+                <div class="plan-feature"><span class="check">&#10003;</span> Everything in Individual</div>
+                <div class="plan-feature"><span class="check">&#10003;</span> Custom training modules</div>
+                <div class="plan-feature"><span class="check">&#10003;</span> Full API access</div>
+                <div class="plan-feature"><span class="check">&#10003;</span> CodeGuard code security scanning</div>
+                <div class="plan-feature"><span class="check">&#10003;</span> Compliance documentation</div>
+                <div class="plan-feature"><span class="check">&#10003;</span> Phone &amp; email support</div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="plans-grid" id="plans-team" style="display:none">
 
         <!-- FREE -->
         <div class="plan-card">
@@ -292,11 +357,11 @@
         </div>
         <div class="faq-item" onclick="toggleFaq(this)">
             <div class="faq-q">What happens after my 7-day trial ends? <span>+</span></div>
-            <div class="faq-a">After 7 days, your account is automatically downgraded to the free plan unless you choose to continue. You will receive a reminder email on day 6 of your trial.</div>
+            <div class="faq-a">Business and Enterprise trials last 7 days. Individual and Individual Pro trials last 3 days. When a trial ends, your subscription starts unless you cancel before then, and you will get a reminder email before it ends.</div>
         </div>
         <div class="faq-item" onclick="toggleFaq(this)">
             <div class="faq-q">How does the AI feature work? <span>+</span></div>
-            <div class="faq-a">The AI analyzes each team member's quiz results, identifies their weak areas, and generates personalized training recommendations. It's available on Business and Enterprise plans only.</div>
+            <div class="faq-a">The AI analyzes each team member's quiz results, identifies their weak areas, and generates personalized training recommendations. It's available on the Business, Enterprise, Individual and Individual Pro plans.</div>
         </div>
         <div class="faq-item" onclick="toggleFaq(this)">
             <div class="faq-q">Can I add more than 10 users on Business? <span>+</span></div>
@@ -326,6 +391,18 @@
             a.classList.toggle('open');
             icon.textContent = a.classList.contains('open') ? '−' : '+';
         }
+    </script>
+
+    <script>
+    function showPlanTab(which) {
+        var ind = which === 'individual';
+        document.getElementById('plans-individual').style.display = ind ? '' : 'none';
+        document.getElementById('plans-team').style.display = ind ? 'none' : '';
+        document.getElementById('tab-individual').classList.toggle('active', ind);
+        document.getElementById('tab-team').classList.toggle('active', !ind);
+        history.replaceState(null, '', ind ? '#individual' : '#teams');
+    }
+    if (location.hash === '#teams') showPlanTab('team');
     </script>
 </body>
 </html>
