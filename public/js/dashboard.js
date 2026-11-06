@@ -31,7 +31,7 @@ const isEnterprise = ['enterprise_trial', 'enterprise', 'individual_pro_trial', 
 if (userData.name) {
     document.getElementById('welcome-name').textContent = userData.name;
     document.getElementById('user-name').textContent = userData.name;
-    document.getElementById('user-company').textContent = userData.company || 'Company';
+    document.getElementById('user-company').textContent = userData.company || 'Personal';
     document.getElementById('user-avatar').textContent = userData.name[0].toUpperCase();
 }
 
@@ -203,7 +203,7 @@ renderModules();
 // ---- Upgrade flow for individual plans ----
 (function () {
     const btn = document.getElementById('upgrade-nav-btn');
-    if (btn && (plan === 'free' || plan === 'individual_trial' || plan === 'individual_pro_trial') && !userData.company) btn.style.display = '';
+    if (btn && plan === 'free' && !userData.company) btn.style.display = '';
 })();
 
 function openUpgradeModal(highlight) {
@@ -261,7 +261,7 @@ async function choosePlan(planKey, action) {
     let pending = null;
     try { pending = localStorage.getItem('pendingPlan'); localStorage.removeItem('pendingPlan'); } catch (e) {}
     const want = q.get('upgrade') || pending;
-    if ((plan === 'free' || String(plan).endsWith('_trial')) && !userData.company && (want === 'individual' || want === 'individual_pro')) {
+    if (plan === 'free' && !userData.company && (want === 'individual' || want === 'individual_pro')) {
         openUpgradeModal(want);
     }
 })();

@@ -48,7 +48,7 @@ function layout(name, bodyHtml, ctaText, ctaHref = `${SITE}/billing`) {
 function buildEmail(kind, user, plan, expires) {
     const label = PLAN_LABEL[plan] || 'paid';
     const isInd = String(plan).startsWith('individual');
-    const ctaHref = isInd ? `${SITE}/dashboard?upgrade=${String(plan).replace('_trial', '')}` : `${SITE}/billing`;
+    const ctaHref = `${SITE}/billing`;
     const dateStr = expires ? expires.toUTCString().slice(0, 16) : '';
     if (kind === 'before_3d') {
         return {

@@ -6,7 +6,7 @@ const ENTERPRISE_PLANS = ['enterprise', 'enterprise_trial', 'individual_pro'];
 
 if (userData.name) {
     document.getElementById('user-name').textContent = userData.name;
-    document.getElementById('user-company').textContent = userData.company || 'Company';
+    document.getElementById('user-company').textContent = userData.company || 'Personal';
     document.getElementById('user-avatar').textContent = userData.name[0].toUpperCase();
 }
 

@@ -3,7 +3,7 @@ if (!token) window.location.href = '/login';
 
 const userData = JSON.parse(localStorage.getItem('user') || '{}');
 document.getElementById('user-name').textContent = userData.name || 'Admin';
-document.getElementById('user-company').textContent = userData.company || 'Company';
+document.getElementById('user-company').textContent = userData.company || 'Personal';
 document.getElementById('user-avatar').textContent = (userData.name || 'A')[0].toUpperCase();
 
 // Admins who are also IT department get the full CodeGuard console link.

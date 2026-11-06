@@ -118,6 +118,8 @@ router.post('/paypal/subscribe', auth, requireAdmin, async (req, res) => {
     if (!cfg) return res.status(400).json({ message: 'Invalid plan' });
     const seats = Math.min(Math.max(parseInt(req.body?.seats, 10) || 1, 1), cfg.maxSeats);
     try {
+        const activeSub = await db.execute({ sql: "SELECT 1 FROM subscriptions WHERE user_id = ? AND status = 'ACTIVE' LIMIT 1", args: [req.user.id] });
+        if (activeSub.rows.length) return res.status(400).json({ message: 'You already have an active subscription. Cancel it first to switch plans.' });
         let startTime = null;
         if (TRIAL_PLANS.includes(req.user.plan) && req.user.trial_expires_at) {
             const s = String(req.user.trial_expires_at);

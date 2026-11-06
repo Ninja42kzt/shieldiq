@@ -3,7 +3,7 @@ if (!token) window.location.href = '/login';
 
 const userData = JSON.parse(localStorage.getItem('user') || '{}');
 document.getElementById('user-name').textContent = userData.name || 'User';
-document.getElementById('user-company').textContent = userData.company || 'Company';
+document.getElementById('user-company').textContent = userData.company || 'Personal';
 document.getElementById('user-avatar').textContent = (userData.name || 'U')[0].toUpperCase();
 
 const categories = {
