@@ -78,13 +78,15 @@ app.use('/api/cron', require('./routes/cron'));
 
 app.use('/api/billing', billing.router);
 
+app.get('/business-trial', (req, res) => res.redirect(301, '/register-company'));
+app.get('/enterprise-trial', (req, res) => res.redirect(301, '/register-company'));
+
 const pages = [
     ['/', 'index.html'], ['/login', 'login.html'], ['/register', 'register.html'],
     ['/verify', 'verify.html'], ['/forgot-password', 'forgot-password.html'],
     ['/dashboard', 'dashboard.html'], ['/quiz', 'quiz.html'], ['/progress', 'progress.html'],
     ['/leaderboard', 'leaderboard.html'], ['/settings', 'settings.html'],
     ['/pricing', 'pricing.html'], ['/admin', 'admin.html'],
-    ['/business-trial', 'business-trial.html'], ['/enterprise-trial', 'enterprise-trial.html'],
     ['/about', 'about.html'], ['/contact', 'contact.html'], ['/terms', 'terms.html'],
     ['/privacy', 'privacy.html'], ['/register-company', 'register-company.html'], ['/training', 'training.html'],
     ['/it-scan', 'it-scan.html'], ['/billing', 'billing.html'],
