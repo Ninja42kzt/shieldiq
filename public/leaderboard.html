@@ -17,6 +17,7 @@
             <a href="/quiz" class="nav-item"><span>🎯</span> Training</a>
             <a href="/progress" class="nav-item"><span>📈</span> My Progress</a>
             <a href="/leaderboard" class="nav-item active"><span>🏆</span> Leaderboard</a>
+            <a href="/it-scan" class="nav-item" id="nav-codeguard" style="display:none"><span>🔍</span> CodeGuard</a>
             <a href="/settings" class="nav-item"><span>⚙️</span> Settings</a>
         </nav>
         <div class="sidebar-footer">
@@ -73,6 +74,7 @@
         </div>
     </main>
 
+    <script src="js/nav.js"></script>
     <script>
         const token = localStorage.getItem('token');
         if (!token) window.location.href = '/login';

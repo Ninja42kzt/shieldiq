@@ -18,18 +18,7 @@ if (!userData.company) {
     document.querySelectorAll('a[href="/leaderboard"]').forEach(el => el.style.display = 'none');
 }
 
-// CodeGuard nav link, per pricing: Individual Pro gets it for everyone on that plan (a solo
-// account has no real department); Enterprise gets it only for IT-department employees (the
-// pricing table literally says "CodeGuard code security scanning (IT department)" for that tier);
-// Business/Free never get it, department or not. Re-run from refreshPlan() since it depends on `plan`.
-function renderCodeGuardNav() {
-    const cgNav = document.getElementById('nav-codeguard');
-    if (!cgNav) return;
-    const hasCodeGuard = (plan === 'individual_pro' || plan === 'individual_pro_trial')
-        || ((plan === 'enterprise' || plan === 'enterprise_trial') && (userData.department || '').toLowerCase() === 'it');
-    cgNav.style.display = hasCodeGuard ? 'flex' : 'none';
-}
-renderCodeGuardNav();
+// CodeGuard nav link is now handled site-wide by nav.js.
 
 // Plan config -- functions (not consts) so they stay correct after refreshPlan() updates `plan`.
 function isPremium() { return ['business_trial', 'business', 'enterprise_trial', 'enterprise', 'individual_trial', 'individual', 'individual_pro_trial', 'individual_pro'].includes(plan); }
@@ -78,7 +67,6 @@ async function refreshPlan() {
             userData.plan = plan;
             localStorage.setItem('user', JSON.stringify(userData));
             renderPlanUI();
-            renderCodeGuardNav();
             renderModules();
             loadRecommendations();
         }
@@ -125,7 +113,16 @@ async function loadRecommendations() {
     try {
         const res = await fetch('/api/quiz/recommend', { headers: { 'Authorization': `Bearer ${token}` } });
         const data = await res.json();
-        const items = Array.isArray(data) ? data : (data.recommendations || []);
+        // ml/ai_recommend.js returns { priority, topPriority, reason, moduleScores, ... } -- not a
+        // plain recommendations array. `priority` is already an ordered list (incomplete modules
+        // first, then weak-scoring ones), which is exactly the per-module list this UI needs.
+        const titles = { phishing: 'Phishing Awareness', passwords: 'Password Security', social: 'Social Engineering', devices: 'Device Security', data: 'Data Protection', incident: 'Incident Response' };
+        const items = (data.priority || []).map((m, i) => ({
+            module: m,
+            title: titles[m] || m,
+            reason: (i === 0 && data.reason) ? data.reason
+                : (data.moduleScores && data.moduleScores[m] !== undefined ? `You scored ${data.moduleScores[m]}% here — review to improve.` : 'Not started yet — keep building your skills.'),
+        }));
         if (!items.length) {
             container.classList.remove('modules-grid');
             container.innerHTML = '<p style="color:var(--text-muted);font-size:14px">Complete a quiz to get personalised recommendations.</p>';

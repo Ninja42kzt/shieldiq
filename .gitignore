@@ -4,3 +4,7 @@ node_modules/
 __pycache__/
 *.pkl
 .env.save
+
+*.bak
+*.bak_*
+patch_*.py

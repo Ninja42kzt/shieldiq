@@ -6,11 +6,7 @@ document.getElementById('user-name').textContent = userData.name || 'Admin';
 document.getElementById('user-company').textContent = userData.company || '';
 document.getElementById('user-avatar').textContent = (userData.name || 'A')[0].toUpperCase();
 
-// Admins who are also IT department get the full CodeGuard console link.
-if ((userData.department || '').toLowerCase() === 'it') {
-    const cgNav = document.getElementById('nav-codeguard');
-    if (cgNav) cgNav.style.display = 'flex';
-}
+// CodeGuard nav link is now handled site-wide by nav.js.
 
 let allEmployees = [];
 const moduleKeys = ['phishing', 'passwords', 'social', 'devices', 'data', 'incident'];
