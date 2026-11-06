@@ -93,13 +93,12 @@ async function loadStats() {
 }
 
 async function loadRecommendations() {
-    const container = document.getElementById('recommend-list');
     const section = document.getElementById('recommend-section');
-    if (!container) return;
+    if (!section) return;
 
     // Hide recommendations for free users
     if (!isPremium()) {
-        if (section) section.innerHTML = `
+        section.innerHTML = `
             <h2>Recommended for You</h2>
             <div style="background:var(--glass);border:1px solid var(--glass-border);border-radius:12px;padding:24px;text-align:center">
                 <p style="color:var(--text-muted);margin-bottom:12px">🤖 AI-powered recommendations are available on all paid plans.</p>
@@ -108,6 +107,12 @@ async function loadRecommendations() {
         `;
         return;
     }
+
+    // Rebuild the unlocked markup every time this runs, since an earlier call (made before the
+    // plan had refreshed) may have replaced this section with the locked message above, which
+    // removes #recommend-list from the DOM entirely.
+    section.innerHTML = `<h2>Recommended for You</h2><div id="recommend-list" class="modules-grid"></div>`;
+    const container = document.getElementById('recommend-list');
 
     try {
         const res = await fetch('/api/quiz/recommend', { headers: { 'Authorization': `Bearer ${token}` } });
