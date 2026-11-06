@@ -124,6 +124,19 @@
                 </div>
             </div>
 
+            <!-- Subscription Card -->
+            <div id="subscription-card" style="background:var(--glass); border:1px solid var(--glass-border); border-radius:16px; padding:32px">
+                <h2 style="font-size:18px; font-weight:700; margin-bottom:24px">Subscription</h2>
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:16px">
+                    <div>
+                        <div style="font-size:14px; font-weight:600" id="sub-plan">Loading...</div>
+                        <div style="font-size:12px; color:var(--text-muted)" id="sub-status"></div>
+                    </div>
+                    <div id="sub-actions"></div>
+                </div>
+                <div id="sub-msg" style="font-size:13px; color:var(--text-muted); margin-top:12px"></div>
+            </div>
+
             <!-- Danger Zone -->
             <div style="background:rgba(255,59,48,0.05); border:1px solid rgba(255,59,48,0.2); border-radius:16px; padding:32px">
                 <h2 style="font-size:18px; font-weight:700; margin-bottom:8px; color:#ff6b6b">Danger Zone</h2>
@@ -314,5 +327,66 @@ function closeSidebar() {
     document.getElementById('sidebar-overlay').classList.remove('open');
 }
 </script>
+
+    <script>
+    var SUB_LABELS = {
+        free: 'Free plan',
+        business_trial: 'Business (trial)', business: 'Business',
+        enterprise_trial: 'Enterprise (trial)', enterprise: 'Enterprise',
+        individual_trial: 'Individual (trial)', individual: 'Individual',
+        individual_pro_trial: 'Individual Pro (trial)', individual_pro: 'Individual Pro'
+    };
+
+    async function cancelSubscriptionFromSettings() {
+        if (!confirm('Cancel your subscription? Your plan switches to Free once PayPal confirms.')) return;
+        var msg = document.getElementById('sub-msg');
+        msg.textContent = 'Cancelling...';
+        try {
+            var r = await fetch('/api/billing/paypal/cancel', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+            });
+            var d = await r.json();
+            if (!r.ok) throw new Error(d.message);
+            msg.textContent = d.message;
+            document.getElementById('sub-actions').textContent = '';
+        } catch (e) {
+            msg.textContent = 'Error: ' + e.message;
+        }
+    }
+
+    (function () {
+        var card = document.getElementById('subscription-card');
+        var t = localStorage.getItem('token');
+        if (!card || !t) return;
+        fetch('/api/billing/status', { headers: { 'Authorization': 'Bearer ' + t } })
+            .then(function (r) { if (!r.ok) throw new Error('status'); return r.json(); })
+            .then(function (d) {
+                var plan = d.plan || 'free';
+                var sub = (d.subscriptions || [])[0];
+                var active = !!(sub && String(sub.status).toUpperCase() === 'ACTIVE');
+                document.getElementById('sub-plan').textContent = SUB_LABELS[plan] || plan;
+                document.getElementById('sub-status').textContent = active
+                    ? 'Active subscription'
+                    : (plan === 'free' ? 'No active subscription' : 'Awaiting payment confirmation');
+                var box = document.getElementById('sub-actions');
+                box.textContent = '';
+                if (active) {
+                    var b = document.createElement('button');
+                    b.textContent = 'Cancel subscription';
+                    b.style.cssText = 'background:rgba(255,59,48,0.1); border:1px solid rgba(255,59,48,0.3); color:#ff6b6b; padding:10px 20px; border-radius:8px; cursor:pointer; font-size:14px';
+                    b.onclick = cancelSubscriptionFromSettings;
+                    box.appendChild(b);
+                } else {
+                    var a = document.createElement('a');
+                    a.href = '/billing';
+                    a.textContent = plan === 'free' ? 'View plans' : 'Billing';
+                    a.style.cssText = 'color:var(--primary); font-size:14px; font-weight:600';
+                    box.appendChild(a);
+                }
+            })
+            .catch(function () { card.style.display = 'none'; });
+    })();
+    </script>
 </body>
 </html>
