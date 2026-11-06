@@ -6,7 +6,7 @@ function parseJWT(token) {
 }
 
 const userData = JSON.parse(localStorage.getItem('user') || '{}');
-const plan = userData.plan || 'free';
+let plan = userData.plan || 'free';
 
 // Redirect to admin panel ONLY for company admins -- a solo individual is also
 // role='admin' (so they can use the same billing/upgrade flow), but has no team to
@@ -24,9 +24,9 @@ if ((userData.department || '').toLowerCase() === 'it') {
     if (cgNav) cgNav.style.display = 'flex';
 }
 
-// Plan config
-const isPremium = ['business_trial', 'business', 'enterprise_trial', 'enterprise', 'individual_trial', 'individual', 'individual_pro_trial', 'individual_pro'].includes(plan);
-const isEnterprise = ['enterprise_trial', 'enterprise', 'individual_pro_trial', 'individual_pro'].includes(plan);
+// Plan config -- functions (not consts) so they stay correct after refreshPlan() updates `plan`.
+function isPremium() { return ['business_trial', 'business', 'enterprise_trial', 'enterprise', 'individual_trial', 'individual', 'individual_pro_trial', 'individual_pro'].includes(plan); }
+function isEnterprise() { return ['enterprise_trial', 'enterprise', 'individual_pro_trial', 'individual_pro'].includes(plan); }
 
 if (userData.name) {
     document.getElementById('welcome-name').textContent = userData.name;
@@ -35,7 +35,7 @@ if (userData.name) {
     document.getElementById('user-avatar').textContent = userData.name[0].toUpperCase();
 }
 
-// Show plan badge in sidebar
+// Show plan badge in sidebar, and the top "Upgrade Plan" nav button -- re-run after refreshPlan() too.
 const planBadges = {
     free: { label: 'Free', color: '#666' },
     business_trial: { label: 'Business Trial', color: '#00D4FF' },
@@ -47,10 +47,34 @@ const planBadges = {
     individual_pro_trial: { label: 'Pro Trial', color: '#bf5af2' },
     individual_pro: { label: 'Individual Pro', color: '#bf5af2' }
 };
-const badge = planBadges[plan] || planBadges.free;
-const companyEl = document.getElementById('user-company');
-if (companyEl) {
-    companyEl.innerHTML = `${userData.company || ''} <span style="background:${badge.color}22;color:${badge.color};font-size:10px;padding:2px 6px;border-radius:4px;margin-left:4px">${badge.label}</span>`;
+function renderPlanUI() {
+    const badge = planBadges[plan] || planBadges.free;
+    const companyEl = document.getElementById('user-company');
+    if (companyEl) {
+        companyEl.innerHTML = `${userData.company || ''} <span style="background:${badge.color}22;color:${badge.color};font-size:10px;padding:2px 6px;border-radius:4px;margin-left:4px">${badge.label}</span>`;
+    }
+    const upgradeBtn = document.getElementById('upgrade-nav-btn');
+    if (upgradeBtn) upgradeBtn.style.display = (plan === 'free' && !userData.company) ? '' : 'none';
+}
+renderPlanUI();
+
+// Fetch the DB's current plan (same endpoint Settings already trusts) and reconcile it into
+// localStorage + this page, since `plan` above is only a login-time snapshot that goes stale
+// the moment a trial/subscribe/cancel happens without a fresh login.
+async function refreshPlan() {
+    try {
+        const res = await fetch('/api/billing/status', { headers: { 'Authorization': 'Bearer ' + token } });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.plan && data.plan !== plan) {
+            plan = data.plan;
+            userData.plan = plan;
+            localStorage.setItem('user', JSON.stringify(userData));
+            renderPlanUI();
+            renderModules();
+            loadRecommendations();
+        }
+    } catch (e) { console.error('Could not refresh plan', e); }
 }
 
 // (duplicate redirect removed -- handled once above, now company-gated)
@@ -74,7 +98,7 @@ async function loadRecommendations() {
     if (!container) return;
 
     // Hide recommendations for free users
-    if (!isPremium) {
+    if (!isPremium()) {
         if (section) section.innerHTML = `
             <h2>Recommended for You</h2>
             <div style="background:var(--glass);border:1px solid var(--glass-border);border-radius:12px;padding:24px;text-align:center">
@@ -180,7 +204,7 @@ function renderModules() {
         </div>
     `;
 
-    if (isPremium) {
+    if (isPremium()) {
         grid.innerHTML = freeModules + premiumModules;
     } else {
         grid.innerHTML = freeModules +
@@ -199,19 +223,21 @@ function logout() {
 loadStats();
 loadRecommendations();
 renderModules();
+refreshPlan();
 
 // ---- Upgrade flow for individual plans ----
-(function () {
-    const btn = document.getElementById('upgrade-nav-btn');
-    if (btn && plan === 'free' && !userData.company) btn.style.display = '';
-})();
 
 function openUpgradeModal(highlight) {
+    if (isPremium()) {
+        const label = (planBadges[plan] || planBadges.free).label;
+        alert('You already have an active plan or trial (' + label + '). Manage or cancel it from Settings before choosing a different plan.');
+        window.location.href = '/settings';
+        return;
+    }
     const m = document.getElementById('upgrade-modal');
     if (!m) return;
-    const inTrial = String(plan).endsWith('_trial');
     m.querySelectorAll('button').forEach(function (b) {
-        if ((b.getAttribute('onclick') || '').indexOf("'trial'") !== -1) b.style.display = inTrial ? 'none' : '';
+        if ((b.getAttribute('onclick') || '').indexOf("'trial'") !== -1) b.style.display = '';
     });
     ['individual', 'individual_pro'].forEach(function (k) {
         const c = document.getElementById('up-card-' + k);
