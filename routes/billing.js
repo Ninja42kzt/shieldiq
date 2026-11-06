@@ -18,6 +18,19 @@ function safeReturn(path) {
     return (typeof path === 'string' && path.startsWith('/')) ? `${SITE}${path}` : undefined;
 }
 
+// One free trial per account, ever. Cancelling a trial must NOT make another one available.
+// "Used" = a trial expiry was ever recorded, OR any subscription row exists (starting a trial
+// creates one and cancelling only changes its status), OR the account is in trial_signup_ips.
+async function hasUsedTrial(userId) {
+    await ensureTrialIpTable();
+    const u = await db.execute({ sql: 'SELECT trial_expires_at FROM users WHERE id = ?', args: [userId] });
+    if (u.rows[0] && u.rows[0].trial_expires_at) return true;
+    const s = await db.execute({ sql: 'SELECT 1 FROM subscriptions WHERE user_id = ? LIMIT 1', args: [userId] });
+    if (s.rows.length) return true;
+    const ip = await db.execute({ sql: 'SELECT 1 FROM trial_signup_ips WHERE user_id = ? LIMIT 1', args: [userId] });
+    return ip.rows.length > 0;
+}
+
 let trialIpTableReady = false;
 async function ensureTrialIpTable() {
     if (trialIpTableReady) return;
@@ -60,6 +73,14 @@ router.post('/start-trial-paypal', auth, requireAdmin, async (req, res) => {
     const cfg = plans[planKey];
     if (!cfg) return res.status(400).json({ message: 'Invalid plan' });
     if (req.user.plan !== 'free') return res.status(400).json({ message: 'This company already has a plan or trial in progress' });
+    try {
+        if (await hasUsedTrial(req.user.id)) {
+            return res.status(400).json({ code: 'TRIAL_USED', message: 'Your free trial has already been used. Please subscribe to continue.' });
+        }
+    } catch (e) {
+        console.error('trial check failed:', e.message);
+        return res.status(500).json({ message: 'Could not start trial' });
+    }
 
     const clientIp = req.ip;
     const trialIpAllowlist = (process.env.TRIAL_IP_ALLOWLIST || '').split(',').map(s => s.trim()).filter(Boolean);
@@ -145,7 +166,9 @@ router.get('/status', auth, async (req, res) => {
         sql: 'SELECT provider, plan_key, status, seats, updated_at FROM subscriptions WHERE user_id = ? ORDER BY id DESC LIMIT 5',
         args: [req.user.id],
     });
-    res.json({ plan: req.user.plan, subscriptions: subs.rows });
+    let trialAvailable = false;
+    try { trialAvailable = !(await hasUsedTrial(req.user.id)); } catch (e) { console.error('trial status check failed:', e.message); }
+    res.json({ plan: req.user.plan, subscriptions: subs.rows, trialAvailable });
 });
 
 // Cancel the caller's active PayPal subscription. This only asks PayPal to cancel; the verified
