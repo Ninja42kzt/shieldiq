@@ -441,6 +441,13 @@ router.get('/force-verify/:email', async (req, res) => {
     }
 });
 
+// Companies with these email domains are never treated as "one account per org" --
+// many legitimate businesses here register with a personal Gmail/Yahoo address.
+const PUBLIC_EMAIL_DOMAINS = [
+    'gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'live.com',
+    'icloud.com', 'aol.com', 'protonmail.com', 'mail.com', 'yandex.com', 'zoho.com',
+];
+
 // Register Company (Admin)
 router.post('/register-company', async (req, res) => {
     const { companyName, adminName, email, password } = req.body;
@@ -458,6 +465,9 @@ router.post('/register-company', async (req, res) => {
         return res.status(400).json({ message: 'Password must be at least 8 characters' });
     }
 
+    const emailDomain = email.split('@')[1]?.toLowerCase();
+    const domainIsEnforced = emailDomain && !PUBLIC_EMAIL_DOMAINS.includes(emailDomain);
+
     try {
         const existing = await db.execute({
             sql: 'SELECT id FROM users WHERE email = ?',
@@ -467,12 +477,22 @@ router.post('/register-company', async (req, res) => {
             return res.status(400).json({ message: 'Email already registered' });
         }
 
+        if (domainIsEnforced) {
+            const existingCompany = await db.execute({
+                sql: "SELECT id FROM users WHERE role = 'admin' AND company_domain = ?",
+                args: [emailDomain],
+            });
+            if (existingCompany.rows.length > 0) {
+                return res.status(400).json({ message: 'An account for this company already exists. Ask your admin to add you as an employee instead.' });
+            }
+        }
+
         const hashedPassword = await bcrypt.hash(password, 10);
 
         await db.execute({
-            sql: `INSERT INTO users (name, company, email, password, verified, role, plan, trial_expires_at)
-                  VALUES (?, ?, ?, ?, 0, 'admin', 'free', NULL)`,
-            args: [adminName, companyName, email, hashedPassword],
+            sql: `INSERT INTO users (name, company, email, password, verified, role, plan, trial_expires_at, company_domain)
+                  VALUES (?, ?, ?, ?, 0, 'admin', 'free', NULL, ?)`,
+            args: [adminName, companyName, email, hashedPassword, domainIsEnforced ? emailDomain : null],
         });
 
         const otp = generateOTP();
