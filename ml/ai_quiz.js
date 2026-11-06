@@ -178,14 +178,14 @@ Create a short, practical training lesson to teach them these concepts. Format a
     {
       "topic": "topic name",
       "title": "lesson title",
-      "content": "2-3 paragraph explanation with real East African examples",
+      "content": "2-3 short paragraphs in very simple everyday words, written for someone with no IT background. First say what it is and why it matters, then give one real Kenyan example (M-Pesa, SMS, WhatsApp, fake bank emails, etc.)",
       "tips": ["practical tip 1", "practical tip 2", "practical tip 3"],
       "redFlag": "one key warning sign to watch out for"
     }
   ]
 }
 
-Make it conversational, practical, and relevant to Kenya/East Africa. Return ONLY valid JSON.`;
+Rules: use plain, simple language that an office employee with no technical training can follow. Avoid jargon; if a technical word is unavoidable, explain it in brackets in a few simple words. Use short sentences. Start every tip with an action word (Check, Never, Call, Report...). Keep it practical and relevant to Kenya/East Africa. Return ONLY valid JSON.`;
 
     const data = JSON.stringify({
         model: 'openai/gpt-oss-120b',
@@ -194,7 +194,7 @@ Make it conversational, practical, and relevant to Kenya/East Africa. Return ONL
             { role: 'user', content: prompt }
         ],
         temperature: 0.7,
-        max_tokens: 2000
+        max_tokens: 3500
     });
 
     return new Promise((resolve, reject) => {
@@ -224,7 +224,7 @@ Make it conversational, practical, and relevant to Kenya/East Africa. Return ONL
             });
         });
         req.on('error', reject);
-        req.setTimeout(15000, () => { req.destroy(); reject(new Error('Timeout')); });
+        req.setTimeout(30000, () => { req.destroy(); reject(new Error('Timeout')); });
         req.write(data);
         req.end();
     });

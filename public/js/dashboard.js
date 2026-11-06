@@ -130,8 +130,9 @@ async function loadRecommendations() {
         }
         container.classList.add('modules-grid');
         const icons = { phishing: '🎣', passwords: '🔑', social: '🧠', devices: '💻', data: '🗄️', incident: '🚨' };
-        container.innerHTML = items.map(r => `
-            <div class="module-card" onclick="window.location.href='/quiz?cat=${r.module}'" style="cursor:pointer">
+        window._recItems = items;
+        container.innerHTML = items.map((r, i) => `
+            <div class="module-card" onclick="openRec(${i})" style="cursor:pointer">
                 <div class="module-icon">${icons[r.module] || '📚'}</div>
                 <div class="module-info">
                     <h3>${r.title || r.module}</h3>
@@ -141,6 +142,19 @@ async function loadRecommendations() {
             </div>
         `).join('');
     } catch (err) { console.error('Could not load recommendations'); }
+}
+
+function openRec(i) {
+    const r = (window._recItems || [])[i];
+    if (!r) return;
+    if (r.weakTopics && r.weakTopics.length) {
+        // Missed topics -> plain-language notes first, quiz retake at the end
+        localStorage.setItem('training_weak_areas', JSON.stringify(r.weakTopics));
+        localStorage.setItem('training_module', r.module);
+        window.location.href = '/training?module=' + encodeURIComponent(r.module);
+    } else {
+        window.location.href = '/quiz?cat=' + encodeURIComponent(r.module);
+    }
 }
 
 function lockModule(name, icon) {
