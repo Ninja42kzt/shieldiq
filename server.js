@@ -81,8 +81,10 @@ app.use('/api/billing', billing.router);
 app.get('/business-trial', (req, res) => res.redirect(301, '/register-company'));
 app.get('/enterprise-trial', (req, res) => res.redirect(301, '/register-company'));
 
+app.get('/register', (req, res) => res.redirect(301, '/register-individual'));
+
 const pages = [
-    ['/', 'index.html'], ['/login', 'login.html'], ['/register', 'register.html'],
+    ['/', 'index.html'], ['/login', 'login.html'],
     ['/verify', 'verify.html'], ['/forgot-password', 'forgot-password.html'],
     ['/dashboard', 'dashboard.html'], ['/quiz', 'quiz.html'], ['/progress', 'progress.html'],
     ['/leaderboard', 'leaderboard.html'], ['/settings', 'settings.html'],
