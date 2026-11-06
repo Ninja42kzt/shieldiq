@@ -221,6 +221,7 @@ router.post('/employees', adminAuth, async (req, res) => {
     try {
         const adminRow = (await db.execute({ sql: 'SELECT company FROM users WHERE id = ?', args: [req.user.id] })).rows[0];
         if (!adminRow) return res.status(401).json({ message: 'Invalid token' });
+        if (!adminRow.company) return res.status(400).json({ message: 'Solo accounts cannot add employees.' });
 
         const existing = await db.execute({ sql: 'SELECT id FROM users WHERE email = ?', args: [email] });
         if (existing.rows.length > 0) return res.status(400).json({ message: 'Email already registered' });
