@@ -215,7 +215,36 @@ router.post('/training', auth, async (req, res) => {
 
     try {
         const { generateTrainingContent } = require('../ml/ai_quiz');
-        const content = await generateTrainingContent(mod, weakAreas);
+        // Notes are saved per user + module + set of missed topics, so they stay the same
+        // when the person comes back later (and we don't re-call the AI every visit).
+        const topicsKey = [...new Set(weakAreas)].sort().join('|');
+        await db.execute(`CREATE TABLE IF NOT EXISTS training_notes (
+            user_id INTEGER NOT NULL,
+            module TEXT NOT NULL,
+            topics_key TEXT NOT NULL,
+            content TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (user_id, module, topics_key)
+        )`);
+
+        let content = null;
+        const cached = await db.execute({
+            sql: 'SELECT content FROM training_notes WHERE user_id = ? AND module = ? AND topics_key = ?',
+            args: [req.user.id, mod, topicsKey],
+        });
+        if (cached.rows.length) {
+            try { content = JSON.parse(cached.rows[0].content); } catch (e) { content = null; }
+        }
+
+        if (!content) {
+            content = await generateTrainingContent(mod, weakAreas);
+            if (content && Array.isArray(content.lessons) && content.lessons.length) {
+                await db.execute({
+                    sql: 'INSERT OR REPLACE INTO training_notes (user_id, module, topics_key, content) VALUES (?, ?, ?, ?)',
+                    args: [req.user.id, mod, topicsKey, JSON.stringify(content)],
+                });
+            }
+        }
         res.json({ content });
     } catch (err) {
         console.error('Training content error:', err.message);
