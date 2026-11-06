@@ -428,26 +428,6 @@ router.post('/disable-2fa', async (req, res) => {
     }
 });
 
-// Temp admin verify -- gated: only a logged-in admin/superadmin can force-verify someone,
-// and only for testing. Was previously wide open on a public GET with no auth at all.
-router.get('/force-verify/:email', async (req, res) => {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) return res.status(401).json({ message: 'Unauthorized' });
-    try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        if (decoded.role !== 'admin' && decoded.role !== 'superadmin') {
-            return res.status(403).json({ message: 'Admin access required' });
-        }
-        await db.execute({
-            sql: 'UPDATE users SET verified = 1 WHERE email = ?',
-            args: [req.params.email],
-        });
-        res.json({ message: 'User verified successfully' });
-    } catch (e) {
-        res.status(401).json({ message: 'Invalid token' });
-    }
-});
-
 // Companies with these email domains are never treated as "one account per org" --
 // many legitimate businesses here register with a personal Gmail/Yahoo address.
 const PUBLIC_EMAIL_DOMAINS = [
