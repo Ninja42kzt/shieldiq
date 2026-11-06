@@ -7,8 +7,27 @@ const paypal = require('../services/paypal');
 const router = express.Router();
 const TRIAL_PLANS = ['business_trial', 'enterprise_trial'];
 const SITE = process.env.SITE_URL || 'https://shieldiq.glitchfactory.co.ke';
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const PUBLIC_EMAIL_DOMAINS = [
+    'gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'live.com',
+    'icloud.com', 'aol.com', 'protonmail.com', 'mail.com', 'yandex.com', 'zoho.com',
+];
+
 function safeReturn(path) {
     return (typeof path === 'string' && path.startsWith('/')) ? `${SITE}${path}` : undefined;
+}
+
+let trialIpTableReady = false;
+async function ensureTrialIpTable() {
+    if (trialIpTableReady) return;
+    await db.execute(`CREATE TABLE IF NOT EXISTS trial_signup_ips (
+        ip TEXT PRIMARY KEY,
+        user_id INTEGER,
+        plan TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )`);
+    trialIpTableReady = true;
 }
 
 async function auth(req, res, next) {
@@ -16,7 +35,7 @@ async function auth(req, res, next) {
     if (!token) return res.status(401).json({ message: 'Unauthorized' });
     try {
         const d = jwt.verify(token, process.env.JWT_SECRET);
-        const u = (await db.execute({ sql: 'SELECT id, name, email, plan, trial_expires_at FROM users WHERE id = ?', args: [d.id] })).rows[0];
+        const u = (await db.execute({ sql: 'SELECT id, name, email, role, plan, trial_expires_at FROM users WHERE id = ?', args: [d.id] })).rows[0];
         if (!u) return res.status(401).json({ message: 'Invalid token' });
         req.user = u;
         next();
@@ -25,10 +44,70 @@ async function auth(req, res, next) {
     }
 }
 
-// Start a PayPal subscription. The plan is only upgraded later, by the verified webhook.
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Only company admins manage billing -- an employee JWT reaching these routes gets rejected.
+function requireAdmin(req, res, next) {
+    if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
+        return res.status(403).json({ message: 'Only the company admin can manage billing' });
+    }
+    next();
+}
 
-router.post('/paypal/subscribe', auth, async (req, res) => {
+// Start a trial on an already-registered, already-free company: sets plan + trial_expires_at,
+// enforces one trial per IP (bypassed for TRIAL_IP_ALLOWLIST), then kicks off the same deferred
+// PayPal approval as the paid flow below -- nothing is charged until the trial actually ends.
+router.post('/start-trial-paypal', auth, requireAdmin, async (req, res) => {
+    const planKey = req.body?.plan;
+    const cfg = plans[planKey];
+    if (!cfg) return res.status(400).json({ message: 'Invalid plan' });
+    if (req.user.plan !== 'free') return res.status(400).json({ message: 'This company already has a plan or trial in progress' });
+
+    const clientIp = req.ip;
+    const trialIpAllowlist = (process.env.TRIAL_IP_ALLOWLIST || '').split(',').map(s => s.trim()).filter(Boolean);
+    const ipIsAllowlisted = trialIpAllowlist.includes(clientIp);
+
+    try {
+        await ensureTrialIpTable();
+        if (!ipIsAllowlisted) {
+            const prior = await db.execute({ sql: 'SELECT 1 FROM trial_signup_ips WHERE ip = ?', args: [clientIp] });
+            if (prior.rows.length > 0) {
+                return res.status(400).json({ message: 'A free trial has already been started from this network.' });
+            }
+        }
+
+        const trialPlanKey = `${planKey}_trial`;
+        const trialExpiry = new Date();
+        trialExpiry.setDate(trialExpiry.getDate() + 7);
+        await db.execute({
+            sql: 'UPDATE users SET plan = ?, trial_expires_at = ? WHERE id = ?',
+            args: [trialPlanKey, trialExpiry.toISOString(), req.user.id],
+        });
+        if (!ipIsAllowlisted) {
+            await db.execute({
+                sql: 'INSERT OR IGNORE INTO trial_signup_ips (ip, user_id, plan) VALUES (?, ?, ?)',
+                args: [clientIp, req.user.id, trialPlanKey],
+            });
+        }
+
+        const seats = Math.min(Math.max(parseInt(req.body?.seats, 10) || 1, 1), cfg.maxSeats);
+        const returnUrl = safeReturn(req.body?.returnPath);
+        const cancelUrl = safeReturn(req.body?.cancelPath);
+        const sub = await paypal.createSubscription({
+            planKey, seats, user: { ...req.user, plan: trialPlanKey }, startTime: trialExpiry, returnUrl, cancelUrl,
+        });
+        await db.execute({
+            sql: `INSERT OR IGNORE INTO subscriptions (user_id, provider, provider_sub_id, plan_key, status, seats)
+                  VALUES (?, 'paypal', ?, ?, 'PENDING', ?)`,
+            args: [req.user.id, sub.id, planKey, seats],
+        });
+        res.json({ approveUrl: sub.approveUrl });
+    } catch (e) {
+        console.error('start-trial-paypal failed:', e.message);
+        res.status(500).json({ message: 'Could not start trial' });
+    }
+});
+
+// Start a PayPal subscription. The plan is only upgraded later, by the verified webhook.
+router.post('/paypal/subscribe', auth, requireAdmin, async (req, res) => {
     const planKey = req.body?.plan;
     const returnUrl = safeReturn(req.body?.returnPath);
     const cancelUrl = safeReturn(req.body?.cancelPath);
@@ -69,7 +148,7 @@ router.get('/status', auth, async (req, res) => {
 async function setUserPlan(userId, plan) {
     const row = (await db.execute({ sql: 'SELECT company FROM users WHERE id = ?', args: [userId] })).rows[0];
     if (row && row.company) {
-        // Cascades to every teammate under this company — including anyone mid-way through
+        // Cascades to every teammate under this company -- including anyone mid-way through
         // their own independent trial countdown. A company-wide plan change always wins.
         await db.execute({ sql: 'UPDATE users SET plan = ?, trial_expires_at = NULL WHERE company = ?', args: [plan, row.company] });
     } else {
@@ -107,7 +186,7 @@ async function processEvent(ev) {
     } else if (type === 'BILLING.SUBSCRIPTION.PAYMENT.FAILED') {
         const sub = (await db.execute({ sql: 'SELECT * FROM subscriptions WHERE provider_sub_id = ?', args: [r.id] })).rows[0];
         if (!sub) return console.warn('Payment failed for unknown subscription', r.id);
-        console.warn('PayPal payment failed for subscription', r.id, '\u2014 downgrading to free');
+        console.warn('PayPal payment failed for subscription', r.id, '-- downgrading to free');
         await db.execute({ sql: "UPDATE subscriptions SET status='PAYMENT_FAILED', updated_at=CURRENT_TIMESTAMP WHERE provider_sub_id = ?", args: [r.id] });
         const other = await db.execute({
             sql: "SELECT 1 FROM subscriptions WHERE user_id = ? AND status = 'ACTIVE' AND provider_sub_id != ?",

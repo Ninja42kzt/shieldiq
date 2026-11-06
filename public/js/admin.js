@@ -356,3 +356,48 @@ async function submitAddEmployee() {
         err.style.display = 'block';
     }
 }
+
+if (userData.plan === 'free') {
+    const btn = document.getElementById('upgrade-nav-btn');
+    if (btn) btn.style.display = 'inline-block';
+}
+
+function openUpgradeModal() {
+    document.getElementById('upgrade-error').style.display = 'none';
+    document.getElementById('upgrade-modal').style.display = 'flex';
+}
+
+function closeUpgradeModal() {
+    document.getElementById('upgrade-modal').style.display = 'none';
+}
+
+async function choosePlan(planKey, action) {
+    const err = document.getElementById('upgrade-error');
+    err.style.display = 'none';
+    const endpoint = action === 'trial' ? '/api/billing/start-trial-paypal' : '/api/billing/paypal/subscribe';
+
+    try {
+        const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({
+                plan: planKey,
+                returnPath: '/admin?status=success',
+                cancelPath: '/admin?status=cancelled',
+            }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Could not start checkout');
+        window.location.href = data.approveUrl;
+    } catch (e) {
+        err.textContent = e.message;
+        err.style.display = 'block';
+    }
+}
+
+const urlStatus = new URLSearchParams(window.location.search).get('status');
+if (urlStatus === 'success') {
+    alert('PayPal approved! Your plan updates within a minute or two once PayPal confirms \u2014 refresh shortly.');
+} else if (urlStatus === 'cancelled') {
+    alert('Checkout cancelled. No charge was made.');
+}

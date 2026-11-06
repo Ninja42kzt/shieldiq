@@ -39,6 +39,7 @@
             </div>
             <div style="display:flex;gap:12px">
                 <button class="btn-outline" onclick="exportReport()" style="cursor:pointer;padding:10px 20px;font-size:14px">📊 Export Report</button>
+                <button class="btn-outline" id="upgrade-nav-btn" onclick="openUpgradeModal()" style="cursor:pointer;padding:10px 20px;font-size:14px;display:none">⬆️ Upgrade Plan</button>
                 <button class="btn-primary" onclick="openAddEmployeeModal()" style="border:none;cursor:pointer;padding:10px 20px;font-size:14px">+ Invite Employee</button>
             </div>
         </header>
@@ -252,6 +253,36 @@
         </div>
 
     </main>
+
+    <div id="upgrade-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1000;align-items:center;justify-content:center;overflow-y:auto;padding:24px 0">
+        <div style="background:#111;border:1px solid #2a2a33;border-radius:14px;padding:28px;max-width:720px;width:92%">
+            <h2 style="margin:0 0 4px;color:#fff">Choose a Plan</h2>
+            <p style="color:var(--text-muted);font-size:13px;margin:0 0 20px">Start a free 7-day trial, or subscribe immediately.</p>
+            <div id="upgrade-error" style="display:none;background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.3);color:#ff6b6b;padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:13px"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+                <div style="border:1px solid #2a2a33;border-radius:12px;padding:20px">
+                    <h3 style="margin:0 0 6px;color:#fff">Business</h3>
+                    <p style="color:var(--text-muted);font-size:13px;margin:0 0 14px">$5/user/mo · up to 10 users</p>
+                    <button class="btn-primary" style="width:100%;border:none;cursor:pointer;margin-bottom:8px" onclick="choosePlan('business','trial')">Start 7-Day Free Trial</button>
+                    <button class="btn-outline" style="width:100%;cursor:pointer" onclick="choosePlan('business','subscribe')">Subscribe Now</button>
+                </div>
+                <div style="border:1px solid #2a2a33;border-radius:12px;padding:20px">
+                    <h3 style="margin:0 0 6px;color:#fff">Enterprise</h3>
+                    <p style="color:var(--text-muted);font-size:13px;margin:0 0 14px">$8/user/mo · up to 30 users</p>
+                    <button class="btn-primary" style="width:100%;border:none;cursor:pointer;margin-bottom:8px" onclick="choosePlan('enterprise','trial')">Start 7-Day Free Trial</button>
+                    <button class="btn-outline" style="width:100%;cursor:pointer" onclick="choosePlan('enterprise','subscribe')">Subscribe Now</button>
+                </div>
+            </div>
+            <div style="border:1px dashed #2a2a33;border-radius:12px;padding:16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                <div>
+                    <strong style="color:#fff">More than 30 people?</strong>
+                    <p style="color:var(--text-muted);font-size:13px;margin:4px 0 0">We'll put together a plan that fits your org.</p>
+                </div>
+                <a href="mailto:sales@glitchfactory.co.ke?subject=ShieldIQ%20Enterprise%2B%20inquiry" class="btn-outline" style="padding:8px 16px;white-space:nowrap">Contact Us</a>
+            </div>
+            <button class="btn-outline" style="width:100%;cursor:pointer" onclick="closeUpgradeModal()">Cancel</button>
+        </div>
+    </div>
 
     <div id="add-employee-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1000;align-items:center;justify-content:center">
         <div style="background:#111;border:1px solid #2a2a33;border-radius:14px;padding:28px;max-width:420px;width:90%">
