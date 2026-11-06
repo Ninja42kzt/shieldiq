@@ -144,7 +144,7 @@
 
         // Populate sidebar
         document.getElementById('user-name').textContent = userData.name || 'User';
-        document.getElementById('user-company').textContent = userData.company || 'Personal';
+        document.getElementById('user-company').textContent = userData.company || '';
         document.getElementById('user-avatar').textContent = (userData.name || 'U')[0].toUpperCase();
 
         // Populate profile
@@ -154,6 +154,17 @@
         document.getElementById('profile-company').textContent = userData.company || '';
         document.getElementById('edit-name').value = userData.name || '';
         document.getElementById('edit-company').value = userData.company || '';
+        // Solo (individual) accounts have no company: hide the field and the profile line.
+        if (!userData.company) { // hideCompanyForSolo
+            const ec = document.getElementById('edit-company');
+            if (ec) {
+                ec.style.display = 'none';
+                const lab = ec.previousElementSibling;
+                if (lab && lab.tagName === 'LABEL') lab.style.display = 'none';
+            }
+            const pc = document.getElementById('profile-company');
+            if (pc) pc.style.display = 'none';
+        }
 
         // 2FA status (stored in localStorage from login response)
         const mfaEnabled = userData.mfa_enabled || false;

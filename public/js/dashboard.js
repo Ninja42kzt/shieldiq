@@ -31,7 +31,7 @@ const isEnterprise = ['enterprise_trial', 'enterprise', 'individual_pro_trial', 
 if (userData.name) {
     document.getElementById('welcome-name').textContent = userData.name;
     document.getElementById('user-name').textContent = userData.name;
-    document.getElementById('user-company').textContent = userData.company || 'Personal';
+    document.getElementById('user-company').textContent = userData.company || '';
     document.getElementById('user-avatar').textContent = userData.name[0].toUpperCase();
 }
 
@@ -50,7 +50,7 @@ const planBadges = {
 const badge = planBadges[plan] || planBadges.free;
 const companyEl = document.getElementById('user-company');
 if (companyEl) {
-    companyEl.innerHTML = `${userData.company || 'Personal'} <span style="background:${badge.color}22;color:${badge.color};font-size:10px;padding:2px 6px;border-radius:4px;margin-left:4px">${badge.label}</span>`;
+    companyEl.innerHTML = `${userData.company || ''} <span style="background:${badge.color}22;color:${badge.color};font-size:10px;padding:2px 6px;border-radius:4px;margin-left:4px">${badge.label}</span>`;
 }
 
 // (duplicate redirect removed -- handled once above, now company-gated)
