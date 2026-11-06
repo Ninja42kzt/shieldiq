@@ -39,7 +39,7 @@
             </div>
             <div style="display:flex;gap:12px">
                 <button class="btn-outline" onclick="exportReport()" style="cursor:pointer;padding:10px 20px;font-size:14px">📊 Export Report</button>
-                <button class="btn-primary" onclick="window.location.href='/register?invite=true'" style="border:none;cursor:pointer;padding:10px 20px;font-size:14px">+ Invite Employee</button>
+                <button class="btn-primary" onclick="openAddEmployeeModal()" style="border:none;cursor:pointer;padding:10px 20px;font-size:14px">+ Invite Employee</button>
             </div>
         </header>
 
@@ -252,6 +252,36 @@
         </div>
 
     </main>
+
+    <div id="add-employee-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1000;align-items:center;justify-content:center">
+        <div style="background:#111;border:1px solid #2a2a33;border-radius:14px;padding:28px;max-width:420px;width:90%">
+            <h2 style="margin:0 0 16px;color:#fff">Add Employee</h2>
+            <div id="add-employee-error" style="display:none;background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.3);color:#ff6b6b;padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:13px"></div>
+            <div id="add-employee-success" style="display:none;background:rgba(52,199,89,0.1);border:1px solid rgba(52,199,89,0.3);color:#34c759;padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:13px"></div>
+
+            <label style="display:block;color:var(--text-muted);font-size:13px;margin-bottom:6px">Full Name</label>
+            <input type="text" id="new-emp-name" placeholder="Jane Wanjiru" style="width:100%;box-sizing:border-box;padding:10px 12px;margin-bottom:14px;background:#0A0A0F;border:1px solid #2a2a33;border-radius:8px;color:#fff">
+
+            <label style="display:block;color:var(--text-muted);font-size:13px;margin-bottom:6px">Work Email</label>
+            <input type="email" id="new-emp-email" placeholder="jane@company.com" style="width:100%;box-sizing:border-box;padding:10px 12px;margin-bottom:14px;background:#0A0A0F;border:1px solid #2a2a33;border-radius:8px;color:#fff">
+
+            <label style="display:block;color:var(--text-muted);font-size:13px;margin-bottom:6px">Department</label>
+            <select id="new-emp-department" style="width:100%;box-sizing:border-box;padding:10px 12px;margin-bottom:20px;background:#0A0A0F;border:1px solid #2a2a33;border-radius:8px;color:#fff">
+                <option value="general">General</option>
+                <option value="it">IT</option>
+                <option value="hr">HR</option>
+                <option value="finance">Finance</option>
+                <option value="operations">Operations</option>
+                <option value="sales">Sales</option>
+            </select>
+
+            <div style="display:flex;gap:10px">
+                <button class="btn-outline" style="flex:1;cursor:pointer" onclick="closeAddEmployeeModal()">Cancel</button>
+                <button class="btn-primary" style="flex:1;border:none;cursor:pointer" onclick="submitAddEmployee()">Add Employee</button>
+            </div>
+            <p style="font-size:12px;color:var(--text-muted);margin-top:14px">They'll always be added as a regular employee — only department is chosen here, never admin access.</p>
+        </div>
+    </div>
 
     <script src="js/admin.js"></script>
 </body>

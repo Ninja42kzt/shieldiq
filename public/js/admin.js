@@ -310,3 +310,49 @@ async function loadCodeGuardSummary() {
         console.error('CodeGuard summary load error:', err);
     }
 }
+function openAddEmployeeModal() {
+    document.getElementById('new-emp-name').value = '';
+    document.getElementById('new-emp-email').value = '';
+    document.getElementById('new-emp-department').value = 'general';
+    document.getElementById('add-employee-error').style.display = 'none';
+    document.getElementById('add-employee-success').style.display = 'none';
+    document.getElementById('add-employee-modal').style.display = 'flex';
+}
+
+function closeAddEmployeeModal() {
+    document.getElementById('add-employee-modal').style.display = 'none';
+}
+
+async function submitAddEmployee() {
+    const name = document.getElementById('new-emp-name').value.trim();
+    const email = document.getElementById('new-emp-email').value.trim();
+    const department = document.getElementById('new-emp-department').value;
+    const err = document.getElementById('add-employee-error');
+    const ok = document.getElementById('add-employee-success');
+    err.style.display = 'none';
+    ok.style.display = 'none';
+
+    if (!name || !email) {
+        err.textContent = 'Name and email are required';
+        err.style.display = 'block';
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/admin/employees', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ name, email, department }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Could not add employee');
+
+        ok.textContent = data.message;
+        ok.style.display = 'block';
+        loadAdminData();
+        setTimeout(closeAddEmployeeModal, 1800);
+    } catch (e) {
+        err.textContent = e.message;
+        err.style.display = 'block';
+    }
+}
