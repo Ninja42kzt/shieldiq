@@ -68,8 +68,8 @@ function render(currentPlan) {
     d.textContent = "Pay with PayPal. If you're still in your free trial, you won't be charged until it ends.";
     const b = document.createElement('button');
     const isCurrent = currentPlan === p.key;
-    b.textContent = isCurrent ? 'Current plan' : 'Subscribe with PayPal';
-    b.disabled = isCurrent;
+    b.textContent = isCurrent ? 'Current plan' : (currentPlan !== 'free' ? 'Cancel current plan to switch' : 'Subscribe with PayPal');
+    b.disabled = isCurrent || currentPlan !== 'free';
     b.onclick = function () { subscribe(p.key); };
     card.appendChild(h); card.appendChild(d); card.appendChild(b);
     plansEl.appendChild(card);
@@ -82,7 +82,9 @@ const q = new URLSearchParams(location.search).get('status');
 if (q === 'success') msg.textContent = 'Thanks! Your plan updates as soon as PayPal confirms (usually within a minute). Refresh this page, then log in again to see it.';
 if (q === 'cancelled') msg.textContent = 'Subscription cancelled. You have not been charged.';
 
-fetch('/api/billing/status', { headers: { Authorization: 'Bearer ' + token } })
+fetch('/api/billing/paypal/sync', { method: 'POST', headers: { Authorization: 'Bearer ' + token } })
+  .catch(function () {})
+  .then(function () { return fetch('/api/billing/status', { headers: { Authorization: 'Bearer ' + token } }); })
   .then(function (r) { return r.json(); })
   .then(function (d) {
     const plan = d.plan || 'free';

@@ -130,4 +130,13 @@ async function cancelSubscription(subId, reason) {
     }
 }
 
-module.exports = { ensureTables, ensurePlan, createSubscription, cancelSubscription, verifyWebhook };
+// Fetch a subscription from PayPal (used to confirm approvals when the webhook is late or missing).
+async function getSubscription(subId) {
+    const r = await fetch(`${BASE}/v1/billing/subscriptions/${encodeURIComponent(subId)}`, {
+        headers: { Authorization: `Bearer ${await accessToken()}`, 'Content-Type': 'application/json' },
+    });
+    if (!r.ok) throw new Error(`PayPal get subscription failed (${r.status})`);
+    return r.json();
+}
+
+module.exports = { ensureTables, ensurePlan, createSubscription, cancelSubscription, getSubscription, verifyWebhook };

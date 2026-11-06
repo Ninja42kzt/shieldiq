@@ -118,6 +118,7 @@ router.post('/paypal/subscribe', auth, requireAdmin, async (req, res) => {
     if (!cfg) return res.status(400).json({ message: 'Invalid plan' });
     const seats = Math.min(Math.max(parseInt(req.body?.seats, 10) || 1, 1), cfg.maxSeats);
     try {
+        await reconcileSubscriptions(req.user.id);
         const activeSub = await db.execute({ sql: "SELECT 1 FROM subscriptions WHERE user_id = ? AND status = 'ACTIVE' LIMIT 1", args: [req.user.id] });
         if (activeSub.rows.length) return res.status(400).json({ message: 'You already have an active subscription. Cancel it first to switch plans.' });
         let startTime = null;
@@ -157,10 +158,46 @@ router.post('/paypal/cancel', auth, requireAdmin, async (req, res) => {
         })).rows[0];
         if (!row) return res.status(400).json({ message: 'No active subscription to cancel' });
         await paypal.cancelSubscription(row.provider_sub_id, 'Cancelled by customer in ShieldIQ');
-        res.json({ message: 'Cancellation requested. Your plan switches to Free once PayPal confirms.' });
+        await db.execute({ sql: "UPDATE subscriptions SET status='CANCELLED', updated_at=CURRENT_TIMESTAMP WHERE provider_sub_id = ?", args: [row.provider_sub_id] });
+        await setUserPlan(req.user.id, 'free');
+        res.json({ message: 'Subscription cancelled. Your plan is now Free.' });
     } catch (e) {
         console.error('cancel failed:', e.message);
         res.status(500).json({ message: 'Could not cancel here. Please cancel in PayPal instead.' });
+    }
+});
+
+// Confirms PENDING subscriptions directly with PayPal, so a late or missing webhook never leaves a
+// paying customer on the wrong plan. Only activates a subscription whose custom_id is this user.
+async function reconcileSubscriptions(userId) {
+    const pend = await db.execute({
+        sql: "SELECT provider_sub_id, plan_key FROM subscriptions WHERE user_id = ? AND status = 'PENDING' ORDER BY id DESC LIMIT 5",
+        args: [userId],
+    });
+    for (const row of pend.rows) {
+        try {
+            const sub = await paypal.getSubscription(row.provider_sub_id);
+            if (sub.status === 'ACTIVE' && String(sub.custom_id) === String(userId) && plans[row.plan_key]) {
+                await db.execute({
+                    sql: "UPDATE subscriptions SET status='ACTIVE', updated_at=CURRENT_TIMESTAMP WHERE provider_sub_id = ?",
+                    args: [row.provider_sub_id],
+                });
+                await setUserPlan(userId, plans[row.plan_key].appPlan);
+                return true;
+            }
+        } catch (e) {
+            console.error('reconcile failed:', e.message);
+        }
+    }
+    return false;
+}
+
+router.post('/paypal/sync', auth, async (req, res) => {
+    try {
+        res.json({ changed: await reconcileSubscriptions(req.user.id) });
+    } catch (e) {
+        console.error('sync failed:', e.message);
+        res.status(500).json({ message: 'Could not sync' });
     }
 });
 

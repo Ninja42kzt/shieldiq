@@ -359,7 +359,9 @@ function closeSidebar() {
         var card = document.getElementById('subscription-card');
         var t = localStorage.getItem('token');
         if (!card || !t) return;
-        fetch('/api/billing/status', { headers: { 'Authorization': 'Bearer ' + t } })
+        fetch('/api/billing/paypal/sync', { method: 'POST', headers: { 'Authorization': 'Bearer ' + t } })
+            .catch(function () {})
+            .then(function () { return fetch('/api/billing/status', { headers: { 'Authorization': 'Bearer ' + t } }); })
             .then(function (r) { if (!r.ok) throw new Error('status'); return r.json(); })
             .then(function (d) {
                 var plan = d.plan || 'free';
