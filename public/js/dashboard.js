@@ -117,7 +117,7 @@ async function loadRecommendations() {
         // plain recommendations array. `priority` is already an ordered list (incomplete modules
         // first, then weak-scoring ones), which is exactly the per-module list this UI needs.
         const titles = { phishing: 'Phishing Awareness', passwords: 'Password Security', social: 'Social Engineering', devices: 'Device Security', data: 'Data Protection', incident: 'Incident Response' };
-        const items = (data.priority || []).map((m, i) => ({
+        const items = Array.isArray(data.recommendations) ? data.recommendations : (data.priority || []).map((m, i) => ({
             module: m,
             title: titles[m] || m,
             reason: (i === 0 && data.reason) ? data.reason

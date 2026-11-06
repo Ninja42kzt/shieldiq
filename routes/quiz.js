@@ -166,8 +166,40 @@ router.get('/recommend', auth, async (req, res) => {
             args: [req.user.id],
         });
  
-        const recommendations = getRecommendations(result.rows);
-        res.json(recommendations);
+        const recommendations = await getRecommendations(result.rows);
+
+        // Per-module study list built from the topics missed in each module's latest quiz
+        const titles = { phishing: 'Phishing Awareness', passwords: 'Password Security', social: 'Social Engineering', devices: 'Device Security', data: 'Data Protection', incident: 'Incident Response' };
+        const seen = new Set();
+        const weakList = [];
+        for (const row of result.rows) {            // rows are newest-first
+            if (seen.has(row.category)) continue;
+            seen.add(row.category);
+            let topics = [];
+            try { topics = JSON.parse(row.weak_areas || '[]'); } catch (e) {}
+            topics = [...new Set(topics)];
+            if (!topics.length) continue;
+            weakList.push({
+                module: row.category,
+                title: titles[row.category] || row.category,
+                score: row.score,
+                weakTopics: topics,
+                reason: 'You missed questions on: ' + topics.join(', ') + '. Review these, then retake the quiz.'
+            });
+        }
+        weakList.sort((a, b) => a.score - b.score);   // weakest module first
+
+        const weakModules = new Set(weakList.map(w => w.module));
+        const done = new Set(recommendations.completedModules || []);
+        const rest = (recommendations.priority || [])
+            .filter(m => !weakModules.has(m))
+            .map(m => ({
+                module: m,
+                title: titles[m] || m,
+                reason: done.has(m) ? 'Review to keep improving.' : 'Not started yet \u2014 keep building your skills.'
+            }));
+
+        res.json({ ...recommendations, recommendations: [...weakList, ...rest] });
     } catch (err) {
         console.error('Recommendation error:', err.message);
         res.status(500).json({ message: 'Error generating recommendations' });
