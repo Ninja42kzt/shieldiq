@@ -389,6 +389,7 @@ async function submitAddEmployee() {
 }
 
 function openUpgradeModal() {
+    document.getElementById('upgrade-seats').value = Math.max(allEmployees.length || 1, 1);
     document.getElementById('upgrade-error').style.display = 'none';
     document.getElementById('upgrade-modal').style.display = 'flex';
 }
@@ -411,6 +412,7 @@ async function choosePlan(planKey, action) {
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify({
                 plan: planKey,
+                seats: parseInt(document.getElementById('upgrade-seats').value, 10) || undefined,
                 returnPath: '/admin?status=success',
                 cancelPath: '/admin?status=cancelled',
             }),

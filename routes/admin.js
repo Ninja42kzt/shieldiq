@@ -219,8 +219,18 @@ router.post('/employees', adminAuth, async (req, res) => {
         const capCfg = plans[String(adminRow.plan || '').replace(/_trial$/, '')];
         if (capCfg && ['business', 'enterprise'].includes(capCfg.appPlan)) {
             const n = Number((await db.execute({ sql: 'SELECT COUNT(*) AS n FROM users WHERE company = ?', args: [adminRow.company] })).rows[0].n);
-            if (n >= capCfg.maxSeats) {
-                return res.status(400).json({ message: `Your ${capCfg.name.replace('ShieldIQ ', '')} plan supports up to ${capCfg.maxSeats} users. Upgrade your plan to add more people.` });
+            // If there's a live subscription, the cap is the seats actually being paid for, so the bill
+            // always matches the team. (No subscription yet, e.g. a trial: fall back to the plan's max.)
+            let paidSeats = null;
+            try {
+                const sr = (await db.execute({ sql: "SELECT seats FROM subscriptions WHERE user_id = ? AND status = 'ACTIVE' ORDER BY id DESC LIMIT 1", args: [req.user.id] })).rows[0];
+                if (sr && Number(sr.seats) > 0) paidSeats = Number(sr.seats);
+            } catch (e) { /* subscriptions table not created yet */ }
+            const cap = paidSeats || capCfg.maxSeats;
+            if (n >= cap) {
+                return res.status(400).json({ message: paidSeats && paidSeats < capCfg.maxSeats
+                    ? `Your team is using all ${cap} paid seats. Add seats in Billing to invite more people.`
+                    : `Your ${capCfg.name.replace('ShieldIQ ', '')} plan supports up to ${capCfg.maxSeats} users. Upgrade your plan to add more people.` });
             }
         }
 

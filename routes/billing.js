@@ -143,7 +143,13 @@ router.post('/start-trial-paypal', auth, requireAdmin, async (req, res) => {
             });
         }
 
-        const seats = Math.min(Math.max(parseInt(req.body?.seats, 10) || 0, headcount, 1), cfg.maxSeats);
+        const requestedSeats = parseInt(req.body?.seats, 10) || 0;
+        if (requestedSeats > cfg.maxSeats) {
+            await db.execute({ sql: "UPDATE users SET plan = 'free', trial_expires_at = NULL WHERE id = ?", args: [req.user.id] });
+            await db.execute({ sql: 'DELETE FROM trial_signup_ips WHERE user_id = ?', args: [req.user.id] });
+            return res.status(400).json({ message: `${cfg.name} supports up to ${cfg.maxSeats} seats.` });
+        }
+        const seats = Math.min(Math.max(requestedSeats, headcount, 1), cfg.maxSeats);
         const returnUrl = safeReturn(req.body?.returnPath);
         const cancelUrl = safeReturn(req.body?.cancelPath);
         let sub;
@@ -186,10 +192,17 @@ router.post('/paypal/subscribe', auth, requireAdmin, async (req, res) => {
         if (headcount > cfg.maxSeats) {
             return res.status(400).json({ message: `Your company has ${headcount} users, but ${cfg.name} supports up to ${cfg.maxSeats}. Choose a larger plan or contact sales@glitchfactory.co.ke.` });
         }
-        const seats = Math.min(Math.max(parseInt(req.body?.seats, 10) || 0, headcount, 1), cfg.maxSeats);
+        const requestedSeats = parseInt(req.body?.seats, 10) || 0;
+        if (requestedSeats > cfg.maxSeats) {
+            return res.status(400).json({ message: `${cfg.name} supports up to ${cfg.maxSeats} seats. Choose a larger plan or contact sales@glitchfactory.co.ke.` });
+        }
+        const seats = Math.min(Math.max(requestedSeats, headcount, 1), cfg.maxSeats);
         await reconcileSubscriptions(req.user.id);
-        const activeRows = (await db.execute({ sql: "SELECT plan_key FROM subscriptions WHERE user_id = ? AND status = 'ACTIVE'", args: [req.user.id] })).rows;
-        if (activeRows.some(r => r.plan_key === planKey)) return res.status(400).json({ message: 'You are already subscribed to this plan.' });
+        const activeRows = (await db.execute({ sql: "SELECT plan_key, seats FROM subscriptions WHERE user_id = ? AND status = 'ACTIVE'", args: [req.user.id] })).rows;
+        // Same plan with a different seat count is allowed (that's how seats are added/removed).
+        if (activeRows.some(r => r.plan_key === planKey && Number(r.seats) === seats)) {
+            return res.status(400).json({ message: `You already have this plan with ${seats} seat${seats === 1 ? '' : 's'}.` });
+        }
         // Switching (upgrade or downgrade): a new PayPal subscription is created for the new plan, and the
         // old one is cancelled only after the new one is approved and ACTIVE (see retireOtherSubscriptions).
         const switching = activeRows.length > 0;
@@ -237,14 +250,17 @@ router.get('/status', auth, async (req, res) => {
     let trialAvailable = false;
     try { trialAvailable = !(await hasUsedTrial(req.user.id)); } catch (e) { console.error('trial status check failed:', e.message); }
     const activeRow = (await db.execute({
-        sql: "SELECT plan_key FROM subscriptions WHERE user_id = ? AND status = 'ACTIVE' ORDER BY id DESC LIMIT 1",
+        sql: "SELECT plan_key, seats FROM subscriptions WHERE user_id = ? AND status = 'ACTIVE' ORDER BY id DESC LIMIT 1",
         args: [req.user.id],
     })).rows[0];
     // Sandbox buyer accounts can only sign in on sandbox.paypal.com; the live site rejects them.
     const paypalManageUrl = (process.env.PAYPAL_ENV === 'live' ? 'https://www.paypal.com' : 'https://www.sandbox.paypal.com') + '/myaccount/autopay/';
+    let headcount = 1;
+    try { headcount = await companyHeadcount(req.user.id); } catch (e) { console.error('headcount failed:', e.message); }
     res.json({
         plan: req.user.plan, subscriptions: subs.rows, trialAvailable,
-        hasActiveSub: !!activeRow, activePlanKey: activeRow ? activeRow.plan_key : null, paypalManageUrl,
+        hasActiveSub: !!activeRow, activePlanKey: activeRow ? activeRow.plan_key : null,
+        activeSeats: activeRow ? Number(activeRow.seats) : null, headcount, paypalManageUrl,
     });
 });
 
