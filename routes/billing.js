@@ -166,7 +166,7 @@ router.post('/paypal/subscribe', auth, requireAdmin, async (req, res) => {
 
 router.get('/status', auth, async (req, res) => {
     const subs = await db.execute({
-        sql: 'SELECT provider, plan_key, status, seats, updated_at FROM subscriptions WHERE user_id = ? ORDER BY id DESC LIMIT 5',
+        sql: "SELECT provider, plan_key, status, seats, updated_at FROM subscriptions WHERE user_id = ? AND status != 'ABANDONED' ORDER BY id DESC LIMIT 5",
         args: [req.user.id],
     });
     let trialAvailable = false;
@@ -206,12 +206,24 @@ router.post('/paypal/cancel', auth, requireAdmin, async (req, res) => {
 // paying customer on the wrong plan. Only activates a subscription whose custom_id is this user.
 async function reconcileSubscriptions(userId) {
     const pend = await db.execute({
-        sql: "SELECT provider_sub_id, plan_key FROM subscriptions WHERE user_id = ? AND status = 'PENDING' ORDER BY id DESC LIMIT 5",
+        sql: "SELECT provider_sub_id, plan_key, created_at FROM subscriptions WHERE user_id = ? AND status = 'PENDING' ORDER BY id DESC LIMIT 10",
         args: [userId],
+    });
+    // A PENDING row = checkout started but not (yet) approved at PayPal. Unapproved ones can never bill.
+    // Anything still unapproved after 24h is marked ABANDONED so it stops cluttering status and sync.
+    const isStale = (c) => {
+        const t = new Date(String(c).includes('T') ? String(c) : String(c).replace(' ', 'T') + 'Z');
+        return !isNaN(t) && Date.now() - t > 24 * 60 * 60 * 1000;
+    };
+    const markStatus = (id, status) => db.execute({
+        sql: "UPDATE subscriptions SET status = ?, updated_at=CURRENT_TIMESTAMP WHERE provider_sub_id = ? AND status = 'PENDING'",
+        args: [status, id],
     });
     for (const row of pend.rows) {
         try {
             const sub = await paypal.getSubscription(row.provider_sub_id);
+            if (['CANCELLED', 'EXPIRED', 'SUSPENDED'].includes(sub.status)) { await markStatus(row.provider_sub_id, sub.status); continue; }
+            if (sub.status !== 'ACTIVE' && isStale(row.created_at)) { await markStatus(row.provider_sub_id, 'ABANDONED'); continue; }
             if (sub.status === 'ACTIVE' && String(sub.custom_id) === String(userId) && plans[row.plan_key]) {
                 await db.execute({
                     sql: "UPDATE subscriptions SET status='ACTIVE', updated_at=CURRENT_TIMESTAMP WHERE provider_sub_id = ?",
@@ -223,6 +235,9 @@ async function reconcileSubscriptions(userId) {
             }
         } catch (e) {
             console.error('reconcile failed:', e.message);
+            if (/\(404\)/.test(e.message) && isStale(row.created_at)) {
+                try { await markStatus(row.provider_sub_id, 'ABANDONED'); } catch (e2) { /* ignore */ }
+            }
         }
     }
     return false;
