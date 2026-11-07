@@ -4,7 +4,8 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { db } = require("../db");
-const { generateOTP, sendOTPEmail, sendReminderEmail } = require('../utils/email');
+const { plans } = require('../config/plans');
+const { generateOTP, sendOTPEmail, sendReminderEmail, sendInviteEmail } = require('../utils/email');
 
 const VALID_DEPARTMENTS = ['general', 'it', 'hr', 'finance', 'operations', 'sales'];
 
@@ -186,21 +187,11 @@ router.get('/weak-areas', adminAuth, async (req, res) => {
     }
 });
 
-// POST /api/admin/upgrade -- upgrade user plan
-router.post('/upgrade', adminAuth, async (req, res) => {
-    const { userId, plan } = req.body;
-    if (!['free', 'pro'].includes(plan))
-        return res.status(400).json({ message: 'Invalid plan' });
-    try {
-        await db.execute({
-            sql: 'UPDATE users SET plan = ? WHERE id = ?',
-            args: [plan, userId],
-        });
-        res.json({ message: `User plan updated to ${plan}` });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Server error' });
-    }
+// POST /api/admin/upgrade -- DISABLED. It let any admin set ANY user's plan (including users in other
+// companies) to 'free' or a non-existent 'pro', bypassing billing. Nothing in the app calls it; plan
+// changes now go only through /api/billing (PayPal) so billing and plan can't drift apart.
+router.post('/upgrade', adminAuth, (req, res) => {
+    res.status(410).json({ message: 'Plans are managed through billing.' });
 });
 
 // POST /api/admin/employees -- admin manually adds a teammate. There is no role field
@@ -219,9 +210,19 @@ router.post('/employees', adminAuth, async (req, res) => {
     const userDepartment = VALID_DEPARTMENTS.includes(department) ? department : 'general';
 
     try {
-        const adminRow = (await db.execute({ sql: 'SELECT company FROM users WHERE id = ?', args: [req.user.id] })).rows[0];
+        const adminRow = (await db.execute({ sql: 'SELECT company, plan FROM users WHERE id = ?', args: [req.user.id] })).rows[0];
         if (!adminRow) return res.status(401).json({ message: 'Invalid token' });
         if (!adminRow.company) return res.status(400).json({ message: 'Solo accounts cannot add employees.' });
+
+        // Business / Enterprise (and their trials) advertise a user cap; enforce it so a team can't
+        // grow past what it's paying for.
+        const capCfg = plans[String(adminRow.plan || '').replace(/_trial$/, '')];
+        if (capCfg && ['business', 'enterprise'].includes(capCfg.appPlan)) {
+            const n = Number((await db.execute({ sql: 'SELECT COUNT(*) AS n FROM users WHERE company = ?', args: [adminRow.company] })).rows[0].n);
+            if (n >= capCfg.maxSeats) {
+                return res.status(400).json({ message: `Your ${capCfg.name.replace('ShieldIQ ', '')} plan supports up to ${capCfg.maxSeats} users. Upgrade your plan to add more people.` });
+            }
+        }
 
         const existing = await db.execute({ sql: 'SELECT id FROM users WHERE email = ?', args: [email] });
         if (existing.rows.length > 0) return res.status(400).json({ message: 'Email already registered' });
@@ -242,7 +243,7 @@ router.post('/employees', adminAuth, async (req, res) => {
             args: [email, otp, 'reset', expires],
         });
         try {
-            await sendOTPEmail(email, name, otp, 'reset');
+            await sendInviteEmail(email, name, otp, adminRow.company);
         } catch (emailErr) {
             console.error('Employee invite email failed (non-blocking):', emailErr.message);
         }

@@ -397,7 +397,10 @@ function closeUpgradeModal() {
     document.getElementById('upgrade-modal').style.display = 'none';
 }
 
+let choosingPlan = false;
 async function choosePlan(planKey, action) {
+    if (choosingPlan) return; // ignore double-clicks so we don't create duplicate PayPal checkouts
+    choosingPlan = true;
     const err = document.getElementById('upgrade-error');
     err.style.display = 'none';
     const endpoint = action === 'trial' ? '/api/billing/start-trial-paypal' : '/api/billing/paypal/subscribe';
@@ -416,6 +419,7 @@ async function choosePlan(planKey, action) {
         if (!res.ok) throw new Error(data.message || 'Could not start checkout');
         window.location.href = data.approveUrl;
     } catch (e) {
+        choosingPlan = false;
         err.textContent = e.message;
         err.style.display = 'block';
     }

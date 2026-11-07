@@ -55,11 +55,18 @@ const PLANS = user.company
 
 const plansEl = document.getElementById('plans');
 const msg = document.getElementById('msg');
+const isBillingAdmin = user.role === 'admin' || user.role === 'superadmin';
+if (!isBillingAdmin) {
+  // Trial reminder emails link here for every team member, but only the company admin can manage billing.
+  document.querySelectorAll('.card').forEach(function (c) { c.style.display = 'none'; });
+  msg.textContent = 'Billing is managed by your company admin. Please ask them to change the plan.';
+}
 
 function baseKey(p) { return String(p || 'free').replace(/_trial$/, ''); }
 
 function render(currentPlan, hasActive) {
   plansEl.textContent = '';
+  if (!isBillingAdmin) return;
   const curIdx = PLANS.findIndex(function (x) { return x.key === baseKey(currentPlan); });
   PLANS.forEach(function (p, i) {
     const card = document.createElement('div');
@@ -109,6 +116,7 @@ fetch('/api/billing/paypal/sync', { method: 'POST', headers: { Authorization: 'B
     // Keep the cached user in step with the server so the plan list and nav don't need a re-login.
     try { user.plan = plan; localStorage.setItem('user', JSON.stringify(user)); } catch (e) {}
     window.__trialAvailable = d.trialAvailable;
+    window.__hasActive = active;
     render(plan, active);
   })
   .catch(function () { document.getElementById('current').textContent = ''; });
@@ -130,6 +138,9 @@ async function cancelSub() {
 }
 
 async function subscribe(plan) {
+  if (window.__subscribing) return;
+  window.__subscribing = true;
+  document.querySelectorAll('#plans button').forEach(function (b) { b.disabled = true; });
   msg.textContent = 'Opening PayPal\u2026';
   try {
     const r = await fetch('/api/billing/paypal/subscribe', {
@@ -140,7 +151,12 @@ async function subscribe(plan) {
     const d = await r.json();
     if (!r.ok) throw new Error(d.message);
     location.href = d.approveUrl;
-  } catch (e) { msg.textContent = 'Error: ' + e.message; }
+  } catch (e) {
+    msg.textContent = 'Error: ' + e.message;
+    window.__subscribing = false;
+    document.querySelectorAll('#plans button').forEach(function (b) { b.disabled = false; });
+    render(user.plan || 'free', window.__hasActive === true);
+  }
 }
 </script>
 </body>

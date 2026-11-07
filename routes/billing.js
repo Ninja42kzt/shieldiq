@@ -43,6 +43,30 @@ async function ensureTrialIpTable() {
     trialIpTableReady = true;
 }
 
+// Seats = everyone in the company (a solo account counts as 1). PayPal bills per seat, so charging
+// for a hard-coded 1 seat under-bills every team.
+async function companyHeadcount(userId) {
+    const u = (await db.execute({ sql: 'SELECT company FROM users WHERE id = ?', args: [userId] })).rows[0];
+    if (u && u.company) {
+        const n = (await db.execute({ sql: 'SELECT COUNT(*) AS n FROM users WHERE company = ?', args: [u.company] })).rows[0].n;
+        return Math.max(Number(n) || 1, 1);
+    }
+    return 1;
+}
+
+// Cancels at PayPal; if PayPal says it's already cancelled/expired (e.g. cancelled from PayPal's own
+// autopay page, or by an earlier retry), that counts as success so the local state can catch up.
+async function cancelAtPayPal(subId, reason) {
+    try {
+        await paypal.cancelSubscription(subId, reason);
+    } catch (e) {
+        let remote = null;
+        try { remote = await paypal.getSubscription(subId); } catch (e2) { /* keep original error */ }
+        if (remote && ['CANCELLED', 'EXPIRED'].includes(remote.status)) return;
+        throw e;
+    }
+}
+
 async function auth(req, res, next) {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) return res.status(401).json({ message: 'Unauthorized' });
@@ -73,6 +97,16 @@ router.post('/start-trial-paypal', auth, requireAdmin, async (req, res) => {
     const cfg = plans[planKey];
     if (!cfg) return res.status(400).json({ message: 'Invalid plan' });
     if (req.user.plan !== 'free') return res.status(400).json({ message: 'This company already has a plan or trial in progress' });
+    let headcount = 1;
+    try {
+        headcount = await companyHeadcount(req.user.id);
+    } catch (e) {
+        console.error('headcount failed:', e.message);
+        return res.status(500).json({ message: 'Could not start trial' });
+    }
+    if (headcount > cfg.maxSeats) {
+        return res.status(400).json({ message: `Your company has ${headcount} users, but ${cfg.name} supports up to ${cfg.maxSeats}. Choose a larger plan or contact sales@glitchfactory.co.ke.` });
+    }
     try {
         if (await hasUsedTrial(req.user.id)) {
             return res.status(400).json({ code: 'TRIAL_USED', message: 'Your free trial has already been used. Please subscribe to continue.' });
@@ -109,12 +143,21 @@ router.post('/start-trial-paypal', auth, requireAdmin, async (req, res) => {
             });
         }
 
-        const seats = Math.min(Math.max(parseInt(req.body?.seats, 10) || 1, 1), cfg.maxSeats);
+        const seats = Math.min(Math.max(parseInt(req.body?.seats, 10) || 0, headcount, 1), cfg.maxSeats);
         const returnUrl = safeReturn(req.body?.returnPath);
         const cancelUrl = safeReturn(req.body?.cancelPath);
-        const sub = await paypal.createSubscription({
-            planKey, seats, user: { ...req.user, plan: trialPlanKey }, startTime: trialExpiry, returnUrl, cancelUrl,
-        });
+        let sub;
+        try {
+            sub = await paypal.createSubscription({
+                planKey, seats, user: { ...req.user, plan: trialPlanKey }, startTime: trialExpiry, returnUrl, cancelUrl,
+            });
+        } catch (ppErr) {
+            // PayPal failed (outage, bad keys...). Undo the trial we just granted so the account isn't
+            // stuck "in trial" with its one-trial-per-network slot burned and no way to retry.
+            await db.execute({ sql: "UPDATE users SET plan = 'free', trial_expires_at = NULL WHERE id = ?", args: [req.user.id] });
+            await db.execute({ sql: 'DELETE FROM trial_signup_ips WHERE user_id = ?', args: [req.user.id] });
+            throw ppErr;
+        }
         await db.execute({
             sql: `INSERT OR IGNORE INTO subscriptions (user_id, provider, provider_sub_id, plan_key, status, seats)
                   VALUES (?, 'paypal', ?, ?, 'PENDING', ?)`,
@@ -137,8 +180,13 @@ router.post('/paypal/subscribe', auth, requireAdmin, async (req, res) => {
         : undefined;
     const cfg = plans[planKey];
     if (!cfg) return res.status(400).json({ message: 'Invalid plan' });
-    const seats = Math.min(Math.max(parseInt(req.body?.seats, 10) || 1, 1), cfg.maxSeats);
     try {
+        const headcount = await companyHeadcount(req.user.id);
+        // Downgrades are now allowed, so make sure the team actually fits the target plan.
+        if (headcount > cfg.maxSeats) {
+            return res.status(400).json({ message: `Your company has ${headcount} users, but ${cfg.name} supports up to ${cfg.maxSeats}. Choose a larger plan or contact sales@glitchfactory.co.ke.` });
+        }
+        const seats = Math.min(Math.max(parseInt(req.body?.seats, 10) || 0, headcount, 1), cfg.maxSeats);
         await reconcileSubscriptions(req.user.id);
         const activeRows = (await db.execute({ sql: "SELECT plan_key FROM subscriptions WHERE user_id = ? AND status = 'ACTIVE'", args: [req.user.id] })).rows;
         if (activeRows.some(r => r.plan_key === planKey)) return res.status(400).json({ message: 'You are already subscribed to this plan.' });
@@ -150,6 +198,23 @@ router.post('/paypal/subscribe', auth, requireAdmin, async (req, res) => {
             const s = String(req.user.trial_expires_at);
             const t = new Date(s.includes('T') ? s : s.replace(' ', 'T') + 'Z');
             if (t - Date.now() > 10 * 60 * 1000) startTime = t; // first charge when the trial ends
+        }
+        // Double-click / retry within 10 minutes: hand back the still-unapproved checkout instead of
+        // creating a second PayPal subscription.
+        if (!paypalEmail) {
+            const fresh = (await db.execute({
+                sql: "SELECT provider_sub_id FROM subscriptions WHERE user_id = ? AND plan_key = ? AND seats = ? AND status = 'PENDING' AND created_at > datetime('now', '-10 minutes') ORDER BY id DESC LIMIT 1",
+                args: [req.user.id, planKey, seats],
+            })).rows[0];
+            if (fresh) {
+                try {
+                    const remote = await paypal.getSubscription(fresh.provider_sub_id);
+                    const link = (remote.links || []).find(l => l.rel === 'approve');
+                    if (remote.status === 'APPROVAL_PENDING' && link) {
+                        return res.json({ approveUrl: link.href, chargesFrom: startTime ? startTime.toISOString() : 'now', switching });
+                    }
+                } catch (e) { /* fall through and create a new one */ }
+            }
         }
         const sub = await paypal.createSubscription({ planKey, seats, user: req.user, startTime, returnUrl, cancelUrl, paypalEmail });
         await db.execute({
@@ -187,13 +252,16 @@ router.get('/status', auth, async (req, res) => {
 // CANCELLED webhook (processEvent) does the actual downgrade to free.
 router.post('/paypal/cancel', auth, requireAdmin, async (req, res) => {
     try {
-        const row = (await db.execute({
-            sql: "SELECT provider_sub_id FROM subscriptions WHERE user_id = ? AND status = 'ACTIVE' ORDER BY id DESC LIMIT 1",
+        const rows = (await db.execute({
+            sql: "SELECT provider_sub_id FROM subscriptions WHERE user_id = ? AND status = 'ACTIVE' ORDER BY id DESC",
             args: [req.user.id],
-        })).rows[0];
-        if (!row) return res.status(400).json({ message: 'No active subscription to cancel' });
-        await paypal.cancelSubscription(row.provider_sub_id, 'Cancelled by customer in ShieldIQ');
-        await db.execute({ sql: "UPDATE subscriptions SET status='CANCELLED', updated_at=CURRENT_TIMESTAMP WHERE provider_sub_id = ?", args: [row.provider_sub_id] });
+        })).rows;
+        if (!rows.length) return res.status(400).json({ message: 'No active subscription to cancel' });
+        // Cancel every active one (normally exactly one) so nothing keeps billing after "cancel".
+        for (const row of rows) {
+            await cancelAtPayPal(row.provider_sub_id, 'Cancelled by customer in ShieldIQ');
+            await db.execute({ sql: "UPDATE subscriptions SET status='CANCELLED', updated_at=CURRENT_TIMESTAMP WHERE provider_sub_id = ?", args: [row.provider_sub_id] });
+        }
         await setUserPlan(req.user.id, 'free');
         res.json({ message: 'Subscription cancelled. Your plan is now Free.' });
     } catch (e) {
@@ -267,11 +335,7 @@ async function retireOtherSubscriptions(userId, keepSubId) {
     })).rows;
     for (const row of rows) {
         try {
-            let remote = null;
-            try { remote = await paypal.getSubscription(row.provider_sub_id); } catch (e) { /* fall through to cancel */ }
-            if (!remote || !['CANCELLED', 'EXPIRED'].includes(remote.status)) {
-                await paypal.cancelSubscription(row.provider_sub_id, 'Replaced by a plan change in ShieldIQ');
-            }
+            await cancelAtPayPal(row.provider_sub_id, 'Replaced by a plan change in ShieldIQ');
             await db.execute({ sql: "UPDATE subscriptions SET status='CANCELLED', updated_at=CURRENT_TIMESTAMP WHERE provider_sub_id = ?", args: [row.provider_sub_id] });
         } catch (e) {
             console.error('could not cancel replaced subscription', row.provider_sub_id, e.message);
@@ -304,12 +368,15 @@ async function processEvent(ev) {
     } else if (['BILLING.SUBSCRIPTION.CANCELLED', 'BILLING.SUBSCRIPTION.SUSPENDED', 'BILLING.SUBSCRIPTION.EXPIRED'].includes(type)) {
         const sub = (await db.execute({ sql: 'SELECT * FROM subscriptions WHERE provider_sub_id = ?', args: [r.id] })).rows[0];
         if (!sub) return;
+        const wasActive = sub.status === 'ACTIVE';
         await db.execute({ sql: 'UPDATE subscriptions SET status = ?, updated_at=CURRENT_TIMESTAMP WHERE provider_sub_id = ?', args: [type.split('.').pop(), r.id] });
         const other = await db.execute({
             sql: "SELECT 1 FROM subscriptions WHERE user_id = ? AND status = 'ACTIVE' AND provider_sub_id != ?",
             args: [sub.user_id, r.id],
         });
-        if (!other.rows.length) await setUserPlan(sub.user_id, 'free');
+        // Only downgrade if this subscription was what the user was paying for. A never-approved, already
+        // replaced, or already cancelled-in-app row must not wipe a current plan or a running trial.
+        if (wasActive && !other.rows.length) await setUserPlan(sub.user_id, 'free');
     } else if (type === 'PAYMENT.SALE.COMPLETED') {
         const subId = r.billing_agreement_id;
         const sub = subId ? (await db.execute({ sql: 'SELECT user_id FROM subscriptions WHERE provider_sub_id = ?', args: [subId] })).rows[0] : null;

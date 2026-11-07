@@ -4,12 +4,15 @@ const { plans, currency } = require('../config/plans');
 
 const BASE = process.env.PAYPAL_ENV === 'live' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com';
 const SITE = process.env.SITE_URL || 'https://shieldiq.glitchfactory.co.ke';
+// Never let a slow PayPal call hang a page load or webhook indefinitely.
+const timeout = () => AbortSignal.timeout(15000);
 
 let tok = { value: null, exp: 0 };
 async function accessToken() {
     if (tok.value && Date.now() < tok.exp) return tok.value;
     const basic = Buffer.from(`${process.env.PAYPAL_CLIENT_ID}:${process.env.PAYPAL_CLIENT_SECRET}`).toString('base64');
     const r = await fetch(`${BASE}/v1/oauth2/token`, {
+        signal: timeout(),
         method: 'POST',
         headers: { Authorization: `Basic ${basic}`, 'Content-Type': 'application/x-www-form-urlencoded' },
         body: 'grant_type=client_credentials',
@@ -22,12 +25,14 @@ async function accessToken() {
 
 async function api(method, path, body, extraHeaders = {}) {
     const r = await fetch(`${BASE}${path}`, {
+        signal: timeout(),
         method,
         headers: { Authorization: `Bearer ${await accessToken()}`, 'Content-Type': 'application/json', ...extraHeaders },
         body: body ? JSON.stringify(body) : undefined,
     });
     const text = await r.text();
-    const j = text ? JSON.parse(text) : {};
+    let j = {};
+    if (text) { try { j = JSON.parse(text); } catch (e) { j = { message: text.slice(0, 200) }; } }
     if (!r.ok) throw new Error(`PayPal ${method} ${path} -> ${r.status}: ${j.message || text.slice(0, 200)}`);
     return j;
 }
@@ -108,6 +113,7 @@ async function verifyWebhook(headers, rawBody) {
         `"transmission_id":${JSON.stringify(h('paypal-transmission-id'))},"transmission_sig":${JSON.stringify(h('paypal-transmission-sig'))},` +
         `"transmission_time":${JSON.stringify(h('paypal-transmission-time'))},"webhook_id":${JSON.stringify(webhookId)},"webhook_event":${rawBody}}`;
     const r = await fetch(`${BASE}/v1/notifications/verify-webhook-signature`, {
+        signal: timeout(),
         method: 'POST',
         headers: { Authorization: `Bearer ${await accessToken()}`, 'Content-Type': 'application/json' },
         body: payload,
@@ -120,6 +126,7 @@ async function verifyWebhook(headers, rawBody) {
 // fetch instead of going through api(). The CANCELLED webhook performs the downgrade.
 async function cancelSubscription(subId, reason) {
     const r = await fetch(`${BASE}/v1/billing/subscriptions/${encodeURIComponent(subId)}/cancel`, {
+        signal: timeout(),
         method: 'POST',
         headers: { Authorization: `Bearer ${await accessToken()}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ reason: String(reason || 'Cancelled by customer').slice(0, 128) }),
@@ -133,6 +140,7 @@ async function cancelSubscription(subId, reason) {
 // Fetch a subscription from PayPal (used to confirm approvals when the webhook is late or missing).
 async function getSubscription(subId) {
     const r = await fetch(`${BASE}/v1/billing/subscriptions/${encodeURIComponent(subId)}`, {
+        signal: timeout(),
         headers: { Authorization: `Bearer ${await accessToken()}`, 'Content-Type': 'application/json' },
     });
     if (!r.ok) throw new Error(`PayPal get subscription failed (${r.status})`);
