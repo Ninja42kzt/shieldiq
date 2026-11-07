@@ -424,5 +424,36 @@
     }
     if (location.hash === '#teams') showPlanTab('team');
     </script>
+
+    <script>
+    // Signed-in visitors (e.g. an admin who clicked an in-app "Upgrade" link) shouldn't see
+    // Login / Get Started, and their plan buttons should go to in-app billing.
+    (function () {
+        if (!localStorage.getItem('token')) return;
+        var u = {};
+        try { u = JSON.parse(localStorage.getItem('user') || '{}'); } catch (e) {}
+        var links = document.getElementById('nav-links');
+        if (!links) return;
+        links.querySelectorAll('a[href="/login"], a[href="/register"]').forEach(function (a) { a.remove(); });
+        var home = document.createElement('a');
+        home.href = (u.role === 'admin' && u.company) ? '/admin' : '/dashboard';
+        home.textContent = 'Dashboard';
+        links.appendChild(home);
+        if (u.role === 'admin') {
+            var manage = document.createElement('a');
+            manage.href = '/billing';
+            manage.className = 'btn-primary';
+            manage.textContent = 'Manage plan';
+            links.appendChild(manage);
+            document.querySelectorAll('.plan-btn').forEach(function (a) {
+                var h = a.getAttribute('href') || '';
+                if (h.indexOf('/register-company') === 0 || h.indexOf('/register-individual?plan=') === 0) {
+                    a.setAttribute('href', '/billing');
+                    a.textContent = 'Choose in Billing';
+                }
+            });
+        }
+    })();
+    </script>
 </body>
 </html>

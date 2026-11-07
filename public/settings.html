@@ -368,7 +368,7 @@ function closeSidebar() {
             .then(function (d) {
                 var plan = d.plan || 'free';
                 var sub = (d.subscriptions || [])[0];
-                var active = !!(sub && String(sub.status).toUpperCase() === 'ACTIVE');
+                var active = d.hasActiveSub === true || !!(sub && String(sub.status).toUpperCase() === 'ACTIVE');
                 document.getElementById('sub-plan').textContent = SUB_LABELS[plan] || plan;
                 document.getElementById('sub-status').textContent = active
                     ? 'Active subscription'
@@ -381,6 +381,11 @@ function closeSidebar() {
                     b.style.cssText = 'background:rgba(255,59,48,0.1); border:1px solid rgba(255,59,48,0.3); color:#ff6b6b; padding:10px 20px; border-radius:8px; cursor:pointer; font-size:14px';
                     b.onclick = cancelSubscriptionFromSettings;
                     box.appendChild(b);
+                    var c = document.createElement('a');
+                    c.href = '/billing';
+                    c.textContent = 'Change plan';
+                    c.style.cssText = 'color:var(--primary); font-size:14px; font-weight:600; margin-left:16px';
+                    box.appendChild(c);
                 } else {
                     var a = document.createElement('a');
                     a.href = '/billing';

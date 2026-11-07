@@ -140,10 +140,13 @@ router.post('/paypal/subscribe', auth, requireAdmin, async (req, res) => {
     const seats = Math.min(Math.max(parseInt(req.body?.seats, 10) || 1, 1), cfg.maxSeats);
     try {
         await reconcileSubscriptions(req.user.id);
-        const activeSub = await db.execute({ sql: "SELECT 1 FROM subscriptions WHERE user_id = ? AND status = 'ACTIVE' LIMIT 1", args: [req.user.id] });
-        if (activeSub.rows.length) return res.status(400).json({ message: 'You already have an active subscription. Cancel it first to switch plans.' });
+        const activeRows = (await db.execute({ sql: "SELECT plan_key FROM subscriptions WHERE user_id = ? AND status = 'ACTIVE'", args: [req.user.id] })).rows;
+        if (activeRows.some(r => r.plan_key === planKey)) return res.status(400).json({ message: 'You are already subscribed to this plan.' });
+        // Switching (upgrade or downgrade): a new PayPal subscription is created for the new plan, and the
+        // old one is cancelled only after the new one is approved and ACTIVE (see retireOtherSubscriptions).
+        const switching = activeRows.length > 0;
         let startTime = null;
-        if (TRIAL_PLANS.includes(req.user.plan) && req.user.trial_expires_at) {
+        if (!switching && TRIAL_PLANS.includes(req.user.plan) && req.user.trial_expires_at) {
             const s = String(req.user.trial_expires_at);
             const t = new Date(s.includes('T') ? s : s.replace(' ', 'T') + 'Z');
             if (t - Date.now() > 10 * 60 * 1000) startTime = t; // first charge when the trial ends
@@ -154,7 +157,7 @@ router.post('/paypal/subscribe', auth, requireAdmin, async (req, res) => {
                   VALUES (?, 'paypal', ?, ?, 'PENDING', ?)`,
             args: [req.user.id, sub.id, planKey, seats],
         });
-        res.json({ approveUrl: sub.approveUrl, chargesFrom: startTime ? startTime.toISOString() : 'now' });
+        res.json({ approveUrl: sub.approveUrl, chargesFrom: startTime ? startTime.toISOString() : 'now', switching });
     } catch (e) {
         console.error('subscribe failed:', e.message);
         res.status(500).json({ message: 'Could not start subscription' });
@@ -168,7 +171,16 @@ router.get('/status', auth, async (req, res) => {
     });
     let trialAvailable = false;
     try { trialAvailable = !(await hasUsedTrial(req.user.id)); } catch (e) { console.error('trial status check failed:', e.message); }
-    res.json({ plan: req.user.plan, subscriptions: subs.rows, trialAvailable });
+    const activeRow = (await db.execute({
+        sql: "SELECT plan_key FROM subscriptions WHERE user_id = ? AND status = 'ACTIVE' ORDER BY id DESC LIMIT 1",
+        args: [req.user.id],
+    })).rows[0];
+    // Sandbox buyer accounts can only sign in on sandbox.paypal.com; the live site rejects them.
+    const paypalManageUrl = (process.env.PAYPAL_ENV === 'live' ? 'https://www.paypal.com' : 'https://www.sandbox.paypal.com') + '/myaccount/autopay/';
+    res.json({
+        plan: req.user.plan, subscriptions: subs.rows, trialAvailable,
+        hasActiveSub: !!activeRow, activePlanKey: activeRow ? activeRow.plan_key : null, paypalManageUrl,
+    });
 });
 
 // Cancel the caller's active PayPal subscription. This only asks PayPal to cancel; the verified
@@ -206,6 +218,7 @@ async function reconcileSubscriptions(userId) {
                     args: [row.provider_sub_id],
                 });
                 await setUserPlan(userId, plans[row.plan_key].appPlan);
+                await retireOtherSubscriptions(userId, row.provider_sub_id);
                 return true;
             }
         } catch (e) {
@@ -217,12 +230,39 @@ async function reconcileSubscriptions(userId) {
 
 router.post('/paypal/sync', auth, async (req, res) => {
     try {
-        res.json({ changed: await reconcileSubscriptions(req.user.id) });
+        const changed = await reconcileSubscriptions(req.user.id);
+        const newest = (await db.execute({
+            sql: "SELECT provider_sub_id FROM subscriptions WHERE user_id = ? AND status = 'ACTIVE' ORDER BY id DESC LIMIT 1",
+            args: [req.user.id],
+        })).rows[0];
+        if (newest) await retireOtherSubscriptions(req.user.id, newest.provider_sub_id);
+        res.json({ changed });
     } catch (e) {
         console.error('sync failed:', e.message);
         res.status(500).json({ message: 'Could not sync' });
     }
 });
+
+// After a new subscription is ACTIVE (plan switch), cancel the user's older ACTIVE ones at PayPal so they
+// aren't billed twice. Failures are logged and retried on the next /paypal/sync (billing/settings page load).
+async function retireOtherSubscriptions(userId, keepSubId) {
+    const rows = (await db.execute({
+        sql: "SELECT provider_sub_id FROM subscriptions WHERE user_id = ? AND status = 'ACTIVE' AND provider_sub_id != ?",
+        args: [userId, keepSubId],
+    })).rows;
+    for (const row of rows) {
+        try {
+            let remote = null;
+            try { remote = await paypal.getSubscription(row.provider_sub_id); } catch (e) { /* fall through to cancel */ }
+            if (!remote || !['CANCELLED', 'EXPIRED'].includes(remote.status)) {
+                await paypal.cancelSubscription(row.provider_sub_id, 'Replaced by a plan change in ShieldIQ');
+            }
+            await db.execute({ sql: "UPDATE subscriptions SET status='CANCELLED', updated_at=CURRENT_TIMESTAMP WHERE provider_sub_id = ?", args: [row.provider_sub_id] });
+        } catch (e) {
+            console.error('could not cancel replaced subscription', row.provider_sub_id, e.message);
+        }
+    }
+}
 
 async function setUserPlan(userId, plan) {
     const row = (await db.execute({ sql: 'SELECT company FROM users WHERE id = ?', args: [userId] })).rows[0];
@@ -245,6 +285,7 @@ async function processEvent(ev) {
         if (!sub) return console.warn('Webhook for unknown subscription', r.id);
         await db.execute({ sql: "UPDATE subscriptions SET status='ACTIVE', updated_at=CURRENT_TIMESTAMP WHERE provider_sub_id = ?", args: [r.id] });
         await setUserPlan(sub.user_id, plans[sub.plan_key].appPlan);
+        await retireOtherSubscriptions(sub.user_id, r.id);
     } else if (['BILLING.SUBSCRIPTION.CANCELLED', 'BILLING.SUBSCRIPTION.SUSPENDED', 'BILLING.SUBSCRIPTION.EXPIRED'].includes(type)) {
         const sub = (await db.execute({ sql: 'SELECT * FROM subscriptions WHERE provider_sub_id = ?', args: [r.id] })).rows[0];
         if (!sub) return;

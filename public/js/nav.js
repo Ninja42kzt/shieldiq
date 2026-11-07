@@ -24,6 +24,24 @@
     }
     render();
 
+    // Company admins: every page gets an "Admin Panel" link, and "Dashboard" links carry ?from=admin
+    // so dashboard.js doesn't bounce them straight back to /admin (that bounce is what made the
+    // admin panel appear to vanish and reappear).
+    (function setupAdminNav() {
+        const u = JSON.parse(localStorage.getItem('user') || '{}');
+        if (u.role !== 'admin' || !u.company) return;
+        const nav = document.querySelector('.sidebar-nav');
+        if (!nav) return;
+        nav.querySelectorAll('a[href="/dashboard"]').forEach(function (a) { a.setAttribute('href', '/dashboard?from=admin'); });
+        if (!nav.querySelector('a[href="/admin"]')) {
+            const a = document.createElement('a');
+            a.href = '/admin';
+            a.className = 'nav-item';
+            a.innerHTML = '<span>\uD83D\uDD27</span> Admin Panel';
+            nav.insertBefore(a, nav.firstChild);
+        }
+    })();
+
     // Catch a plan change made mid-session (trial/subscribe/cancel) without needing a fresh login.
     async function refresh() {
         try {

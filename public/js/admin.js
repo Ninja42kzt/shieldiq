@@ -2,6 +2,12 @@ const token = localStorage.getItem('token');
 if (!token) window.location.href = '/login';
 
 const userData = JSON.parse(localStorage.getItem('user') || '{}');
+
+// A solo Individual account is role='admin' too (so it can share the billing/upgrade
+// flow with company admins) but has no `company` -- this page is for managing a team,
+// so send anyone without one back to their own dashboard instead of showing the
+// broken, companyless "0 employees" admin view.
+if (userData.role !== 'admin' || !userData.company) window.location.href = '/dashboard';
 document.getElementById('user-name').textContent = userData.name || 'Admin';
 document.getElementById('user-company').textContent = userData.company || '';
 document.getElementById('user-avatar').textContent = (userData.name || 'A')[0].toUpperCase();
@@ -371,9 +377,15 @@ async function submitAddEmployee() {
     }
 }
 
-if (userData.plan === 'free') {
+{
     const btn = document.getElementById('upgrade-nav-btn');
-    if (btn) btn.style.display = 'inline-block';
+    if (btn && userData.plan === 'free') {
+        btn.style.display = 'inline-block';
+    } else if (btn && userData.plan !== 'enterprise') {
+        // Already on a paid/trial plan: upgrading is a plan switch, which lives on the billing page.
+        btn.style.display = 'inline-block';
+        btn.onclick = function () { window.location.href = '/billing'; };
+    }
 }
 
 function openUpgradeModal() {

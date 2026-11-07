@@ -21,7 +21,7 @@
   <div class="card">
     <h2>Cancel or manage your subscription</h2>
     <p class="muted">You can cancel here, or in
-      <a href="https://www.paypal.com/myaccount/autopay/" target="_blank" rel="noopener">PayPal automatic payments</a>.
+      <a id="manage-link" href="https://www.paypal.com/myaccount/autopay/" target="_blank" rel="noopener">PayPal automatic payments</a>.
       Your plan returns to Free once PayPal confirms the cancellation.</p>
     <button id="cancel-btn" style="display:none;background:#ff6b6b;color:#000" onclick="cancelSub()">Cancel subscription</button>
   </div>
@@ -56,32 +56,41 @@ const PLANS = user.company
 const plansEl = document.getElementById('plans');
 const msg = document.getElementById('msg');
 
-function render(currentPlan) {
+function baseKey(p) { return String(p || 'free').replace(/_trial$/, ''); }
+
+function render(currentPlan, hasActive) {
   plansEl.textContent = '';
-  PLANS.forEach(function (p) {
+  const curIdx = PLANS.findIndex(function (x) { return x.key === baseKey(currentPlan); });
+  PLANS.forEach(function (p, i) {
     const card = document.createElement('div');
     card.className = 'card';
     const h = document.createElement('h2');
     h.textContent = p.name + ' \u2014 ' + p.price;
     const d = document.createElement('p');
     d.className = 'muted';
-    d.textContent = (window.__trialAvailable === true)
-      ? "Pay with PayPal. If you're still in your free trial, you won't be charged until it ends."
-      : (window.__trialAvailable === false ? "Pay with PayPal. You will be charged today." : "Pay with PayPal.");
+    d.textContent = hasActive
+      ? "Switch with PayPal. Once you approve the new plan, your current subscription is cancelled automatically. The new plan is charged today."
+      : (window.__trialAvailable === true)
+        ? "Pay with PayPal. If you're still in your free trial, you won't be charged until it ends."
+        : (window.__trialAvailable === false ? "Pay with PayPal. You will be charged today." : "Pay with PayPal.");
     const b = document.createElement('button');
     const isCurrent = currentPlan === p.key;
-    b.textContent = isCurrent ? 'Current plan' : (currentPlan !== 'free' ? 'Cancel current plan to switch' : 'Subscribe with PayPal');
-    b.disabled = isCurrent || currentPlan !== 'free';
+    let label = 'Subscribe with PayPal';
+    if (isCurrent) label = 'Current plan';
+    else if (curIdx >= 0 && i > curIdx) label = 'Upgrade to ' + p.name;
+    else if (curIdx >= 0 && i < curIdx) label = 'Switch down to ' + p.name;
+    b.textContent = label;
+    b.disabled = isCurrent;
     b.onclick = function () { subscribe(p.key); };
     card.appendChild(h); card.appendChild(d); card.appendChild(b);
     plansEl.appendChild(card);
   });
 }
 
-render(user.plan || 'free');
+render(user.plan || 'free', false);
 
 const q = new URLSearchParams(location.search).get('status');
-if (q === 'success') msg.textContent = 'Thanks! Your plan updates as soon as PayPal confirms (usually within a minute). Refresh this page, then log in again to see it.';
+if (q === 'success') msg.textContent = 'Thanks! Your plan updates as soon as PayPal confirms (usually within a minute). Refresh this page in a moment to see it.';
 if (q === 'cancelled') msg.textContent = 'Subscription cancelled. You have not been charged.';
 
 fetch('/api/billing/paypal/sync', { method: 'POST', headers: { Authorization: 'Bearer ' + token } })
@@ -94,9 +103,13 @@ fetch('/api/billing/paypal/sync', { method: 'POST', headers: { Authorization: 'B
     const s = (d.subscriptions || [])[0];
     if (s && s.status) text += ' \u00b7 Subscription: ' + String(s.status).toLowerCase();
     document.getElementById('current').textContent = text;
-    if (s && String(s.status).toUpperCase() === 'ACTIVE') document.getElementById('cancel-btn').style.display = '';
+    const active = d.hasActiveSub === true || !!(s && String(s.status).toUpperCase() === 'ACTIVE');
+    if (active) document.getElementById('cancel-btn').style.display = '';
+    if (d.paypalManageUrl) document.getElementById('manage-link').href = d.paypalManageUrl;
+    // Keep the cached user in step with the server so the plan list and nav don't need a re-login.
+    try { user.plan = plan; localStorage.setItem('user', JSON.stringify(user)); } catch (e) {}
     window.__trialAvailable = d.trialAvailable;
-    render(plan);
+    render(plan, active);
   })
   .catch(function () { document.getElementById('current').textContent = ''; });
 
@@ -112,6 +125,7 @@ async function cancelSub() {
     if (!r.ok) throw new Error(d.message);
     msg.textContent = d.message;
     document.getElementById('cancel-btn').style.display = 'none';
+    setTimeout(function () { location.reload(); }, 1200);
   } catch (e) { msg.textContent = 'Error: ' + e.message; }
 }
 
