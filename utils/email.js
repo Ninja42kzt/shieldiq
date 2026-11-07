@@ -2,6 +2,10 @@ const { Resend } = require('resend');
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM_ADDRESS = 'ShieldIQ <noreply@glitchfactory.co.ke>';
+// Used to build the clickable link in the employee invite email below.
+// Set APP_URL in .env if you ever test against a different host (e.g. the
+// raw onrender.com URL); this only covers the fallback.
+const APP_URL = process.env.APP_URL || 'https://shieldiq.glitchfactory.co.ke';
 
 function generateOTP() {
     return Math.floor(100000 + Math.random() * 900000).toString();
@@ -58,6 +62,35 @@ async function sendOTPEmail(to, name, otp, purpose = 'login') {
     }
 }
 
+// Sent when an admin adds a teammate. This used to reuse sendOTPEmail's
+// generic "reset" template -- a bare code with no link and no mention this
+// was a new account -- so the employee had no way to use it, and had to
+// separately click "Forgot password" to get a second code. This gives them
+// a direct link straight to the set-password screen with their email and
+// the code's destination already wired up (see forgot-password.html).
+async function sendInviteEmail(to, name, otp, companyName) {
+    const link = `${APP_URL}/forgot-password?email=${encodeURIComponent(to)}&invite=1`;
+    const { error } = await resend.emails.send({
+        from: FROM_ADDRESS,
+        to,
+        subject: `You've been added to ${companyName || 'your company'}'s ShieldIQ account`,
+        html: `
+        <div style="font-family:sans-serif;max-width:500px;margin:0 auto;padding:32px;background:#0A0A0F;color:#fff;border-radius:16px">
+            <h1 style="color:#00D4FF">🛡️ ShieldIQ</h1>
+            <h2>Welcome, ${name}!</h2>
+            <p style="color:#999">${companyName || 'Your company'} added you to their ShieldIQ security training account. Set your password to get started:</p>
+            <div style="text-align:center;margin:24px 0">
+                <a href="${link}" style="display:inline-block;background:#00D4FF;color:#0A0A0F;font-weight:700;padding:14px 28px;border-radius:10px;text-decoration:none">Set Your Password →</a>
+            </div>
+            <p style="color:#666;font-size:12px">Or go to ${APP_URL}/forgot-password and use this code: <strong style="color:#fff;letter-spacing:2px">${otp}</strong> (expires in 10 minutes).</p>
+        </div>`
+    });
+
+    if (error) {
+        throw new Error(`Resend error: ${error.message || JSON.stringify(error)}`);
+    }
+}
+
 // Admin "remind" button: sent from ShieldIQ's own verified address (Resend requires
 // a verified sending domain, so we can't send as the admin's actual mailbox), but
 // reply-to is set to the admin's email so a reply from the employee reaches the
@@ -88,4 +121,4 @@ async function sendReminderEmail(to, toName, adminName, adminEmail, companyName)
     }
 }
 
-module.exports = { generateOTP, sendVerificationEmail, sendOTPEmail, sendReminderEmail };
+module.exports = { generateOTP, sendVerificationEmail, sendOTPEmail, sendReminderEmail, sendInviteEmail };
