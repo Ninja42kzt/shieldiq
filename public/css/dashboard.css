@@ -54,6 +54,16 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
+    /* style.css has a global `nav {}` rule for the landing-page top bar (fixed, full width,
+       space-between, centered, blurred). Undo it here so the sidebar menu lays out as a plain list. */
+    position: static;
+    width: auto;
+    justify-content: flex-start;
+    align-items: stretch;
+    z-index: auto;
+    background: none;
+    backdrop-filter: none;
+    border-bottom: none;
 }
 
 .nav-item {
