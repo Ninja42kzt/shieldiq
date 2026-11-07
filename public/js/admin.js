@@ -2,12 +2,6 @@ const token = localStorage.getItem('token');
 if (!token) window.location.href = '/login';
 
 const userData = JSON.parse(localStorage.getItem('user') || '{}');
-
-// A solo Individual account is role='admin' too (so it can share the billing/upgrade
-// flow with company admins) but has no `company` -- this page is for managing a team,
-// so send anyone without one back to their own dashboard instead of showing the
-// broken, companyless "0 employees" admin view.
-if (userData.role !== 'admin' || !userData.company) window.location.href = '/dashboard';
 document.getElementById('user-name').textContent = userData.name || 'Admin';
 document.getElementById('user-company').textContent = userData.company || '';
 document.getElementById('user-avatar').textContent = (userData.name || 'A')[0].toUpperCase();

@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { db } = require("../db");
-const { generateOTP, sendOTPEmail, sendReminderEmail, sendInviteEmail } = require('../utils/email');
+const { generateOTP, sendOTPEmail, sendReminderEmail } = require('../utils/email');
 
 const VALID_DEPARTMENTS = ['general', 'it', 'hr', 'finance', 'operations', 'sales'];
 
@@ -242,7 +242,7 @@ router.post('/employees', adminAuth, async (req, res) => {
             args: [email, otp, 'reset', expires],
         });
         try {
-            await sendInviteEmail(email, name, otp, adminRow.company);
+            await sendOTPEmail(email, name, otp, 'reset');
         } catch (emailErr) {
             console.error('Employee invite email failed (non-blocking):', emailErr.message);
         }

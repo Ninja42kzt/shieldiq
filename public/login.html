@@ -106,13 +106,8 @@
                     successMsg.textContent = 'Login successful! Redirecting...';
                     successMsg.style.display = 'block';
                     errorMsg.style.display = 'none';
-                    // Always land on /dashboard, same as the MFA-verify flow (verify.html) does --
-                    // dashboard.js itself decides whether to bounce a *company* admin on to /admin.
-                    // A solo Individual account is role='admin' too (so it can share the billing/
-                    // upgrade flow) but has no `company`, so sending role==='admin' straight here
-                    // put Individual users on the admin panel's broken, companyless "0 employees"
-                    // view instead of their own dashboard.
-                    setTimeout(() => window.location.href = '/dashboard', 800);
+                    const redirect = data.user.role === 'admin' ? '/admin' : '/dashboard';
+                    setTimeout(() => window.location.href = redirect, 800);
                 } else {
                     errorMsg.textContent = data.message || 'Invalid credentials';
                     errorMsg.style.display = 'block';
