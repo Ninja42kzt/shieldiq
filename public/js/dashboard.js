@@ -51,7 +51,8 @@ function renderPlanUI() {
     const badge = planBadges[plan] || planBadges.free;
     const companyEl = document.getElementById('user-company');
     if (companyEl) {
-        companyEl.innerHTML = `${userData.company || ''} <span style="background:${badge.color}22;color:${badge.color};font-size:10px;padding:2px 6px;border-radius:4px;margin-left:4px">${badge.label}</span>`;
+        // userData.company is free text the company admin typed at signup, not safe HTML.
+        companyEl.innerHTML = `${window.escapeHtml ? escapeHtml(userData.company || '') : (userData.company || '')} <span style="background:${badge.color}22;color:${badge.color};font-size:10px;padding:2px 6px;border-radius:4px;margin-left:4px">${badge.label}</span>`;
     }
     const upgradeBtn = document.getElementById('upgrade-nav-btn');
     if (upgradeBtn) upgradeBtn.style.display = (plan === 'free' && !userData.company) ? '' : 'none';
@@ -326,6 +327,11 @@ async function choosePlan(planKey, action) {
         return;
     }
     if (upgradeStatus === 'cancelled') {
+        // If this was a free-trial checkout that got cancelled before ever being approved at
+        // PayPal, release it immediately so trying again doesn't say "trial already used".
+        // Safe to call unconditionally: it's a no-op for a cancelled *paid* checkout, or if
+        // too much time has passed (see RELEASE_WINDOW_MS server-side).
+        fetch('/api/billing/trial/abandon', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } }).catch(function () {});
         alert('Checkout cancelled. No charge was made.');
         return;
     }

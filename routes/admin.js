@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { db } = require("../db");
@@ -9,23 +8,19 @@ const { generateOTP, sendOTPEmail, sendReminderEmail, sendInviteEmail } = requir
 
 const VALID_DEPARTMENTS = ['general', 'it', 'hr', 'finance', 'operations', 'sales'];
 
-function adminAuth(req, res, next) {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) return res.status(401).json({ message: 'Unauthorized' });
-    try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        if (decoded.role !== 'admin' && decoded.role !== 'superadmin') {
-            return res.status(403).json({ message: 'Admin access required' });
-        }
-        req.user = decoded;
-        next();
-    } catch {
-        res.status(401).json({ message: 'Invalid token' });
-    }
-}
+// This router is mounted in server.js as:
+//   app.use('/api/admin', authenticateToken, requireAdmin, adminRoutes)
+// which already verifies the token's signature, re-checks role and token_version straight from
+// the DB (see utils/session.js), and sets req.user = { id, email, role }. There used to be a
+// second, per-route `adminAuth` middleware here that re-verified the JWT on its own and then
+// overwrote req.user with the *raw, unverified token payload* -- undoing the DB re-check the
+// outer middleware had just done, and leaving a stale token (e.g. one issued before a password
+// change) usable here even after authenticateToken would have rejected it elsewhere. Every
+// handler below only ever needs req.user.id (it fetches company/role/plan fresh from the DB as
+// needed), so the fix is simply to rely on the outer middleware instead of duplicating it badly.
 
 // GET /api/admin/stats -- company-wide stats
-router.get('/stats', adminAuth, async (req, res) => {
+router.get('/stats', async (req, res) => {
     try {
         const adminResult = await db.execute({
             sql: 'SELECT * FROM users WHERE id = ?',
@@ -78,7 +73,7 @@ router.get('/stats', adminAuth, async (req, res) => {
 });
 
 // GET /api/admin/users -- user list with risk levels and weak areas
-router.get('/users', adminAuth, async (req, res) => {
+router.get('/users', async (req, res) => {
     try {
         const adminResult = await db.execute({
             sql: 'SELECT * FROM users WHERE id = ?',
@@ -151,7 +146,7 @@ router.get('/users', adminAuth, async (req, res) => {
 });
 
 // GET /api/admin/weak-areas -- aggregated weak areas across the company
-router.get('/weak-areas', adminAuth, async (req, res) => {
+router.get('/weak-areas', async (req, res) => {
     try {
         const adminResult = await db.execute({
             sql: 'SELECT * FROM users WHERE id = ?',
@@ -190,7 +185,7 @@ router.get('/weak-areas', adminAuth, async (req, res) => {
 // POST /api/admin/upgrade -- DISABLED. It let any admin set ANY user's plan (including users in other
 // companies) to 'free' or a non-existent 'pro', bypassing billing. Nothing in the app calls it; plan
 // changes now go only through /api/billing (PayPal) so billing and plan can't drift apart.
-router.post('/upgrade', adminAuth, (req, res) => {
+router.post('/upgrade', (req, res) => {
     res.status(410).json({ message: 'Plans are managed through billing.' });
 });
 
@@ -200,7 +195,7 @@ router.post('/upgrade', adminAuth, (req, res) => {
 //
 // plan is deliberately 'free' / trial_expires_at NULL here -- nothing is granted until
 // this employee actually sets their password (see routes/auth.js reset-password).
-router.post('/employees', adminAuth, async (req, res) => {
+router.post('/employees', async (req, res) => {
     const { name, email, department } = req.body;
     if (!name || !email) return res.status(400).json({ message: 'Name and email are required' });
 
@@ -269,7 +264,7 @@ router.post('/employees', adminAuth, async (req, res) => {
 // Sent from ShieldIQ's address with reply-to set to the admin's own email, so
 // a reply reaches the admin directly even though Resend requires mail to go
 // out from a verified ShieldIQ address rather than the admin's own mailbox.
-router.post('/remind', adminAuth, async (req, res) => {
+router.post('/remind', async (req, res) => {
     const { employeeEmail } = req.body;
     if (!employeeEmail) return res.status(400).json({ message: 'employeeEmail is required' });
 

@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const jwt = require('jsonwebtoken');
 const { db } = require('../db');
 const repoService = require('../services/codeguard/repoService');
 const analysisService = require('../services/codeguard/analysisService');
+const { verifySession } = require('../utils/session');
 
 // CodeGuard is an Enterprise-only, IT-department feature:
 //   - Only users in the IT department can run scans or view full,
@@ -19,23 +19,12 @@ const ENTERPRISE_PLANS = ['enterprise', 'enterprise_trial', 'individual_pro', 'i
 // can change after a token was issued).
 async function loadRequester(req, res, next) {
     const token = req.headers.authorization?.split(' ')[1];
-    if (!token) return res.status(401).json({ message: 'Unauthorized' });
-    let decoded;
     try {
-        decoded = jwt.verify(token, process.env.JWT_SECRET);
-    } catch {
-        return res.status(401).json({ message: 'Invalid token' });
-    }
-    try {
-        const result = await db.execute({
-            sql: 'SELECT id, company, role, department, plan FROM users WHERE id = ?',
-            args: [decoded.id],
-        });
-        const user = result.rows[0];
-        if (!user) return res.status(401).json({ message: 'Invalid token' });
+        const { user } = await verifySession(token);
         req.user = user;
         next();
     } catch (err) {
+        if (err.status) return res.status(err.status).json({ message: err.message });
         console.error('CodeGuard auth error:', err);
         res.status(500).json({ message: 'Server error' });
     }

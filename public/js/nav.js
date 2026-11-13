@@ -8,6 +8,25 @@
 //
 // CodeGuard rule (pricing): Individual Pro gets it for everyone on that plan (a solo account has no real
 // department); Enterprise gets it only for IT-department employees; Business/Free never do.
+// Shared HTML-escaping helper, used anywhere a page drops a user-controlled string (name, email,
+// company, etc.) into innerHTML. Several pages used to interpolate these fields directly into
+// innerHTML template strings with no escaping at all -- since a display name is chosen by its own
+// user at signup, that meant a name like `<img src=x onerror="...">` would execute as a script in
+// the browser of anyone who later viewed it (the admin's employee list, the company leaderboard),
+// potentially stealing their session token straight out of localStorage. Defined on window (not
+// inside nav.js's own IIFE below) so every page that loads nav.js -- which is all of them -- can
+// use it. Uses the standard textContent round-trip rather than a regex so it's standards-exact.
+window.escapeHtml = function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = (str === null || str === undefined) ? '' : String(str);
+    // The textContent/innerHTML round-trip escapes & < > for safe use as element TEXT, but the
+    // HTML serialization spec does not escape quote characters there (they're only special inside
+    // an attribute value). Several call sites below use this inside a quoted attribute
+    // (data-name="...", data-email="..."), so quotes are escaped manually too -- safe to do
+    // unconditionally, since an escaped quote renders identically to a literal one as text.
+    return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+};
+
 (function () {
     const token = localStorage.getItem('token');
     if (!token) return; // each page's own script already handles the redirect-to-login case

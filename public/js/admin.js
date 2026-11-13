@@ -144,6 +144,9 @@ function renderEmployees(employees) {
         return;
     }
 
+    // emp.name / emp.email are chosen by that employee at signup -- never trust them as safe HTML.
+    // escapeHtml (from nav.js) is used everywhere one of these is interpolated below, both in
+    // element text and inside the data-name/data-email attributes.
     tbody.innerHTML = employees.map(emp => {
         const risk = getRiskLevel(emp.avg_score || 0, emp.modules || 0);
         const riskLabels = { low: '🟢 Low', medium: '🟡 Medium', high: '🔴 High', none: '⚪ Not Started' };
@@ -151,18 +154,20 @@ function renderEmployees(employees) {
         const scoreColor = risk === 'low' ? '#34c759' : risk === 'medium' ? '#ff9f0a' : risk === 'high' ? '#ff6b6b' : 'var(--text-muted)';
         const lastActive = emp.last_active ? new Date(emp.last_active).toLocaleDateString('en-KE', { day: 'numeric', month: 'short' }) : 'Never';
         const weakAreas = emp.weak_areas
-            ? emp.weak_areas.split(',').slice(0, 2).map(a => `<span style="background:rgba(255,159,10,0.1);color:#ff9f0a;padding:2px 6px;border-radius:4px;font-size:11px;margin-right:4px">${a.trim()}</span>`).join('')
+            ? emp.weak_areas.split(',').slice(0, 2).map(a => `<span style="background:rgba(255,159,10,0.1);color:#ff9f0a;padding:2px 6px;border-radius:4px;font-size:11px;margin-right:4px">${escapeHtml(a.trim())}</span>`).join('')
             : '<span style="color:var(--text-muted);font-size:12px">None identified</span>';
-        const initials = emp.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+        const safeName = escapeHtml(emp.name);
+        const safeEmail = escapeHtml(emp.email);
+        const initials = escapeHtml(emp.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2));
 
         return `
-            <tr class="employee-row" data-risk="${risk}" data-name="${emp.name.toLowerCase()}" data-email="${emp.email.toLowerCase()}">
+            <tr class="employee-row" data-risk="${risk}" data-name="${escapeHtml((emp.name || '').toLowerCase())}" data-email="${escapeHtml((emp.email || '').toLowerCase())}">
                 <td>
                     <div style="display:flex;align-items:center;gap:12px">
                         <div style="width:36px;height:36px;border-radius:50%;background:rgba(0,212,255,0.2);color:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0">${initials}</div>
                         <div>
-                            <div style="font-weight:600">${emp.name}</div>
-                            <div style="font-size:12px;color:var(--text-muted)">${emp.email}</div>
+                            <div style="font-weight:600">${safeName}</div>
+                            <div style="font-size:12px;color:var(--text-muted)">${safeEmail}</div>
                         </div>
                     </div>
                 </td>
@@ -172,13 +177,27 @@ function renderEmployees(employees) {
                 <td>${weakAreas}</td>
                 <td style="color:var(--text-muted)">${lastActive}</td>
                 <td>
-                    <button class="remind-btn" onclick="sendReminder('${emp.email}', '${emp.name}')">
+                    <button class="remind-btn" data-remind-email="${escapeHtml(emp.email)}" data-remind-name="${safeName}">
                         📧 Remind
                     </button>
                 </td>
             </tr>
         `;
     }).join('');
+
+    // Reminder buttons used to be wired up with an inline onclick="sendReminder('${emp.email}',
+    // '${emp.name}')" string -- beyond the missing HTML-escaping above, interpolating a name
+    // straight into a quoted JS string literal inside an attribute meant a single apostrophe in
+    // someone's name (e.g. "O'Brien") would break the handler, and a more deliberate payload could
+    // inject arbitrary JS there even with HTML entities escaped (quote-escaping protects HTML
+    // attribute parsing, not the separate JS-string-literal parsing that happens after it). Reading
+    // the value back out of a data-* attribute and passing it to addEventListener sidesteps both
+    // problems entirely.
+    tbody.querySelectorAll('.remind-btn').forEach(btn => {
+        btn.addEventListener('click', (evt) => {
+            sendReminder(btn.dataset.remindEmail, btn.dataset.remindName, evt);
+        });
+    });
 }
 
 function filterEmployees() {
@@ -232,8 +251,8 @@ function getWorstModule(completion) {
     return worst;
 }
 
-async function sendReminder(email, name) {
-    const btn = event?.target?.closest('button');
+async function sendReminder(email, name, evt) {
+    const btn = evt?.target?.closest('button');
     const originalLabel = btn ? btn.textContent : null;
     if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
 
@@ -314,13 +333,16 @@ async function loadCodeGuardSummary() {
         document.getElementById('cg-medium').textContent = summary?.medium ?? 0;
         document.getElementById('cg-low').textContent = summary?.low ?? 0;
 
+        // CodeGuard recommendations are derived from scanning a GitHub repo -- repo content (file
+        // names, matched snippets) is untrusted input (see the same reasoning already applied in
+        // it-scan.js's own escapeHtml for this data elsewhere), so escape before using innerHTML.
         const recEl = document.getElementById('cg-recommendations');
         recEl.innerHTML = recommendations.length ? recommendations.map(r => `
             <div class="insight-card" style="margin-bottom:10px">
                 <div class="insight-icon">${r.priority === 'critical' ? '🚨' : r.priority === 'high' ? '⚠️' : 'ℹ️'}</div>
                 <div class="insight-text">
-                    <strong>${r.title}</strong>
-                    <p>${r.description || ''}</p>
+                    <strong>${escapeHtml(r.title)}</strong>
+                    <p>${escapeHtml(r.description || '')}</p>
                 </div>
             </div>
         `).join('') : '<p style="color:var(--text-muted)">No recommendations for the latest scan.</p>';

@@ -110,7 +110,26 @@ Respond ONLY with a valid JSON array. No explanation, no markdown, no code block
     });
 }
 
-async function generateQuestions(module, count = 5, weakAreas = []) {
+// Difficulty scales with how many times this specific person has already taken this specific
+// module (see routes/quiz.js, which counts prior quiz_results rows for module+user and passes it
+// in as attemptNumber). Someone retaking "Phishing Awareness" for the sixth time should be seeing
+// materially harder, trickier questions than they did the first time, not the same difficulty mix
+// reshuffled -- otherwise repeated practice stops being useful past the first couple of attempts.
+function difficultyInstruction(attemptNumber) {
+    const n = Number(attemptNumber) || 0;
+    if (n <= 0) {
+        return `- Difficulty: this is the learner's FIRST attempt at this module. Mix mostly easy and medium questions with clear, unambiguous scenarios, so a newcomer can build confidence and understand the basics without being tripped up by edge cases.`;
+    }
+    if (n <= 2) {
+        return `- Difficulty: this learner has taken this module ${n} time(s) before. Mostly medium difficulty, with one or two harder questions. Scenarios can have a bit more nuance and the wrong options should be a little more plausible than on a first attempt, but the right answer should still be clearly correct to someone who understood the basics.`;
+    }
+    if (n <= 5) {
+        return `- Difficulty: this learner has taken this module ${n} times already and knows the basics well -- do NOT repeat beginner-level questions. Make MOST questions hard: multi-step scenarios, realistic edge cases, and distractor options that are genuinely close to correct (not obviously wrong), so the learner has to reason carefully rather than pattern-match.`;
+    }
+    return `- Difficulty: this learner has taken this module ${n} times and should be treated as advanced. ALL questions should be hard and deliberately tricky: combine two or more concepts from the topic list into one scenario, use distractor options that are each individually plausible and differ only in an important technical/practical detail, include exceptions or "it depends" edge cases, and avoid any question with an obvious tell. The goal is to genuinely challenge someone who already knows the fundamentals -- do not soften this for the sake of making the quiz feel fair.`;
+}
+
+async function generateQuestions(module, count = 5, weakAreas = [], attemptNumber = 0) {
     const topic = MODULE_TOPICS[module];
     if (!topic) throw new Error(`Unknown module: ${module}`);
 
@@ -136,7 +155,7 @@ STRICT RULES:
   1. Explains WHY the correct answer is right
   2. Explains WHY the wrong options are incorrect
   3. Teaches the user what to do in this situation in real life
-- Vary difficulty: mix easy, medium and hard questions
+${difficultyInstruction(attemptNumber)}
 - Make each question completely unique
 
 Return ONLY this JSON array:

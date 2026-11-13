@@ -20,6 +20,7 @@
     "express-rate-limit": "^8.5.0",
     "fs-extra": "^11.4.0",
     "glob": "^10.5.0",
+    "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
     "resend": "^6.21.0",
     "simple-git": "^3.36.0",

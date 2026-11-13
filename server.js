@@ -1,20 +1,78 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const path = require('path');
-const jwt = require('jsonwebtoken');
+const { verifySession } = require('./utils/session');
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors());
+// Security headers. The app relies heavily on inline <script>/<style> across its pages
+// (no nonces/build step), so script-src/style-src keep 'unsafe-inline' rather than breaking
+// every page -- this is a conscious trade-off, not an oversight. It still buys clickjacking
+// protection (frameAncestors/X-Frame-Options), MIME-sniffing protection, HSTS, and a locked
+// down default-src. Tightening script-src further would need moving inline scripts to files
+// and adopting nonces, which is a larger follow-up.
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-inline'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            imgSrc: ["'self'", 'data:', 'https:'],
+            connectSrc: ["'self'"],
+            fontSrc: ["'self'", 'data:'],
+            objectSrc: ["'none'"],
+            frameAncestors: ["'self'"],
+            baseUri: ["'self'"],
+            formAction: ["'self'"],
+        },
+    },
+    crossOriginEmbedderPolicy: false,
+}));
+
+// CORS: this API is called from ShieldIQ's own pages (auth is a Bearer token, not a cookie,
+// so this isn't a CSRF control) but an open wildcard still lets any site script unauthenticated
+// endpoints against it, and is flagged by basically every security scanner. Restrict to the
+// site's own origins; ALLOWED_ORIGINS can add more (comma-separated) without a code change.
+const defaultOrigins = [
+    process.env.SITE_URL || 'https://shieldiq.glitchfactory.co.ke',
+    'https://shieldiq.onrender.com',
+];
+const extraOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
+const allowedOrigins = new Set([...defaultOrigins, ...extraOrigins, 'http://localhost:3000']);
+app.use(cors({
+    origin(origin, cb) {
+        // No Origin header = same-origin navigation, curl, server-to-server, PayPal webhook, etc.
+        if (!origin || allowedOrigins.has(origin)) return cb(null, true);
+        cb(new Error('Not allowed by CORS'));
+    },
+}));
 app.set('trust proxy', 1); // Required on Render so req.ip is the real client IP, not Render's proxy
+
+// Coarse, in-memory, per-instance safety net on top of the DB-backed auth limiter below
+// (which is the real protection across multiple Render instances). Generous limits —
+// this is a backstop against scripted abuse, not a UX throttle for normal use.
+app.use('/api/', rateLimit({ windowMs: 15 * 60 * 1000, max: 300, standardHeaders: true, legacyHeaders: false }));
+// AI question/training generation calls an external LLM and an external threat feed on every
+// request -- expensive and abusable. Keep it tighter than the general API limit.
+const aiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false, message: { message: 'Too many requests, please slow down.' } });
+
 const billing = require('./routes/billing');
 app.post('/api/billing/paypal/webhook', express.raw({ type: '*/*' }), billing.webhookHandler);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+// Protected pages render everything client-side from the API, but still shouldn't linger in
+// a shared computer's disk/back-button cache after logout.
+const NO_STORE_PAGES = new Set(['/dashboard', '/admin', '/settings', '/billing', '/progress', '/quiz', '/it-scan']);
+app.use((req, res, next) => {
+    if (NO_STORE_PAGES.has(req.path)) res.set('Cache-Control', 'no-store');
+    next();
+});
 app.use(express.static(path.join(__dirname, 'public')));
 
 const { db, initDB } = require('./db');
@@ -41,14 +99,19 @@ async function rateLimitAuth(req, res, next) {
     }
 }
 
-function authenticateToken(req, res, next) {
+async function authenticateToken(req, res, next) {
     const token = req.headers.authorization?.split(' ')[1];
-    if (!token) return res.status(401).json({ message: 'Unauthorized' });
+    // Re-checks against the DB rather than trusting the token's claims as-is: a deleted/
+    // deactivated account or a password change (which bumps token_version) cuts off access
+    // immediately instead of waiting out the token's natural expiry. See utils/session.js.
     try {
-        req.user = jwt.verify(token, process.env.JWT_SECRET);
+        const { user } = await verifySession(token);
+        req.user = { id: user.id, email: user.email, role: user.role };
         next();
-    } catch {
-        res.status(403).json({ message: 'Invalid token' });
+    } catch (err) {
+        if (err.status) return res.status(err.status).json({ message: err.message });
+        console.error('authenticateToken error:', err);
+        res.status(500).json({ message: 'Server error' });
     }
 }
 
@@ -64,6 +127,8 @@ const adminRoutes = require('./routes/admin');
 const itScanRoutes = require('./routes/itScan');
 
 app.use('/api/auth', rateLimitAuth, authRoutes);
+app.use('/api/quiz/ai-questions', aiLimiter);
+app.use('/api/quiz/training', aiLimiter);
 app.use('/api/quiz', authenticateToken, quizRoutes);
 app.use('/api/admin', authenticateToken, requireAdmin, adminRoutes);
 // itScanRoutes does its own auth (IT department + Enterprise plan for

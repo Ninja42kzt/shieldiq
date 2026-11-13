@@ -105,13 +105,16 @@
                     }
                 });
 
+                // user.name / user.company are chosen by each teammate at signup, not safe HTML --
+                // escape before using innerHTML (see nav.js#escapeHtml). This is a company-wide view,
+                // so an unescaped name here would run in every teammate's browser, not just its owner's.
                 const list = document.getElementById('rankings-list');
                 list.innerHTML = data.map((user, i) => `
                     <div style="padding:16px 24px; display:flex; align-items:center; gap:16px; border-bottom:1px solid var(--glass-border); ${user.name === userData.name ? 'background:rgba(0,212,255,0.05)' : ''}">
                         <span style="width:28px; font-weight:700; color:${i < 3 ? 'var(--primary)' : 'var(--text-muted)'}; font-size:${i < 3 ? '18px' : '14px'}">${i < 3 ? medals[i] : '#' + (i+1)}</span>
                         <div style="flex:1">
-                            <div style="font-weight:600; font-size:14px">${user.name} ${user.name === userData.name ? '<span style="color:var(--primary); font-size:11px">(You)</span>' : ''}</div>
-                            <div style="font-size:12px; color:var(--text-muted)">${user.company} · ${user.modules} modules</div>
+                            <div style="font-weight:600; font-size:14px">${escapeHtml(user.name)} ${user.name === userData.name ? '<span style="color:var(--primary); font-size:11px">(You)</span>' : ''}</div>
+                            <div style="font-size:12px; color:var(--text-muted)">${escapeHtml(user.company)} · ${user.modules} modules</div>
                         </div>
                         <span style="font-weight:800; font-size:18px; color:${user.avg_score >= 80 ? '#34c759' : user.avg_score >= 60 ? '#ff9f0a' : '#ff6b6b'}">${user.avg_score}%</span>
                     </div>

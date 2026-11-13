@@ -1,23 +1,20 @@
 const express = require('express');
 const router = express.Router();
-const jwt = require('jsonwebtoken');
 const { db } = require("../db");
 const { generateQuestions } = require('../ml/ai_quiz');
 const { getRecommendations } = require('../ml/ai_recommend');
- 
-function auth(req, res, next) {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) return res.status(401).json({ message: 'Unauthorized' });
-    try {
-        req.user = jwt.verify(token, process.env.JWT_SECRET);
-        next();
-    } catch {
-        res.status(401).json({ message: 'Invalid token' });
-    }
-}
+
+// This router is mounted in server.js as `app.use('/api/quiz', authenticateToken, quizRoutes)`,
+// which already verifies the token and re-checks token_version straight from the DB (see
+// utils/session.js), setting req.user = { id, email, role }. Every route below used to also apply
+// its own local `auth` middleware that re-verified the JWT on its own and then OVERWROTE req.user
+// with the raw, unchecked token payload -- undoing the token_version check the outer middleware
+// had just done (so a token from before a password change/reset would still work here even after
+// it was rejected everywhere else). Every handler below only ever needs req.user.id, so removing
+// the duplicate middleware (same fix already applied to routes/admin.js) is enough.
  
 // Save quiz result
-router.post('/result', auth, async (req, res) => {
+router.post('/result', async (req, res) => {
     const { category, score, total, correct, weakAreas } = req.body;
     try {
         const weakAreasJson = weakAreas && weakAreas.length > 0
@@ -37,7 +34,7 @@ router.post('/result', auth, async (req, res) => {
 });
  
 // Get user results
-router.get('/results', auth, async (req, res) => {
+router.get('/results', async (req, res) => {
     try {
         const result = await db.execute({
             sql: 'SELECT * FROM quiz_results WHERE user_id = ? ORDER BY taken_at DESC',
@@ -51,7 +48,7 @@ router.get('/results', auth, async (req, res) => {
 });
  
 // Get user stats
-router.get('/stats', auth, async (req, res) => {
+router.get('/stats', async (req, res) => {
     try {
         const result = await db.execute({
             sql: 'SELECT * FROM quiz_results WHERE user_id = ?',
@@ -114,7 +111,7 @@ router.get('/stats', auth, async (req, res) => {
 // Leaderboard -- scoped to the caller's own company. A solo user (no company)
 // has no peers to rank against, so this is blocked for them entirely rather
 // than silently showing a cross-company list, which was the previous bug.
-router.get('/leaderboard', auth, async (req, res) => {
+router.get('/leaderboard', async (req, res) => {
     try {
         const caller = (await db.execute({ sql: 'SELECT company FROM users WHERE id = ?', args: [req.user.id] })).rows[0];
         if (!caller || !caller.company) {
@@ -140,7 +137,7 @@ router.get('/leaderboard', auth, async (req, res) => {
 });
  
 // AI-generated questions for a module
-router.get('/ai-questions/:module', auth, async (req, res) => {
+router.get('/ai-questions/:module', async (req, res) => {
     const { module } = req.params;
     const count = parseInt(req.query.count) || 5;
  
@@ -150,7 +147,15 @@ router.get('/ai-questions/:module', auth, async (req, res) => {
     }
  
     try {
-        const questions = await generateQuestions(module, count);
+        // The more times someone has already done this specific module, the harder/trickier the
+        // questions get -- counts completed attempts recorded for this module so far (today's
+        // attempt, if any, hasn't been scored/inserted yet at generation time, so this is prior
+        // attempts only, which is what should drive the difficulty of the one about to start).
+        const priorAttempts = (await db.execute({
+            sql: 'SELECT COUNT(*) AS n FROM quiz_results WHERE user_id = ? AND category = ?',
+            args: [req.user.id, module],
+        })).rows[0]?.n || 0;
+        const questions = await generateQuestions(module, count, [], Number(priorAttempts));
         res.json({ module, questions, source: 'ai', generatedAt: new Date().toISOString() });
     } catch (err) {
         console.error('AI quiz generation error:', err.message);
@@ -159,7 +164,7 @@ router.get('/ai-questions/:module', auth, async (req, res) => {
 });
  
 // Personalised module recommendations
-router.get('/recommend', auth, async (req, res) => {
+router.get('/recommend', async (req, res) => {
     try {
         const result = await db.execute({
             sql: 'SELECT * FROM quiz_results WHERE user_id = ? ORDER BY taken_at DESC',
@@ -207,7 +212,7 @@ router.get('/recommend', auth, async (req, res) => {
 });
  
 // Generate training content for weak areas
-router.post('/training', auth, async (req, res) => {
+router.post('/training', async (req, res) => {
     const { weakAreas, module: mod } = req.body;
     if (!weakAreas || !weakAreas.length) {
         return res.status(400).json({ message: 'No weak areas provided' });

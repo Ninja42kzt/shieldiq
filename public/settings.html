@@ -152,7 +152,7 @@
 
     <script src="js/nav.js"></script>
     <script>
-        const token = localStorage.getItem('token');
+        let token = localStorage.getItem('token');
         if (!token) window.location.href = '/login';
         const userData = JSON.parse(localStorage.getItem('user') || '{}');
         if (!userData.company) { document.querySelectorAll('a[href="/leaderboard"]').forEach(el => el.style.display = 'none'); }
@@ -236,6 +236,12 @@
                 successMsg.textContent = data.message;
                 successMsg.style.display = 'block';
                 errorMsg.style.display = 'none';
+                // Changing the password invalidates the old token everywhere (including here) --
+                // the server hands back a fresh one for this device so this session stays logged in.
+                if (data.token) {
+                    localStorage.setItem('token', data.token);
+                    token = data.token;
+                }
                 document.getElementById('current-password').value = '';
                 document.getElementById('new-password').value = '';
                 document.getElementById('confirm-password').value = '';

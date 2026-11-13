@@ -226,7 +226,7 @@ async function showResults() {
             <div style="background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.3);border-radius:12px;padding:20px;margin:16px 0;text-align:left">
                 <h3 style="color:#ff6b6b;margin-bottom:12px">⚠️ Weak Areas Identified</h3>
                 <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">
-                    ${uniqueWeak.map(w => `<span style="background:rgba(255,107,107,0.2);color:#ff6b6b;padding:4px 12px;border-radius:20px;font-size:13px">${w}</span>`).join('')}
+                    ${uniqueWeak.map(w => `<span style="background:rgba(255,107,107,0.2);color:#ff6b6b;padding:4px 12px;border-radius:20px;font-size:13px">${escapeHtml(w)}</span>`).join('')}
                 </div>
                 <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px">Don't worry — ShieldIQ will generate a personalised training lesson to help you improve on these topics.</p>
                 <button onclick="startTraining()" style="background:#00D4FF;color:#000;border:none;padding:12px 24px;border-radius:8px;font-weight:700;cursor:pointer;width:100%">

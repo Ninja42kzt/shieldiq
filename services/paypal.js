@@ -147,4 +147,29 @@ async function getSubscription(subId) {
     return r.json();
 }
 
-module.exports = { ensureTables, ensurePlan, createSubscription, cancelSubscription, getSubscription, verifyWebhook };
+// Changes the seat count on an EXISTING, already-ACTIVE subscription in place, instead of creating
+// a brand new subscription (and cancelling the old one) just to add one seat. This matters for two
+// reasons: (1) the renewal date never changes, so a newly added employee is always billed on the
+// same cycle as the rest of the company rather than starting their own separate one, and (2) PayPal
+// prorates a quantity-only revision for the remainder of the current cycle, so the company is
+// charged for the new seat's partial month, not for a fresh full-price month of seats it has
+// already paid for. Same plan_id, only `quantity` changes.
+//
+// PayPal's response for a quantity-only revise does not always include an "approve" link the way
+// subscription creation does -- per PayPal's docs, revising *quantity alone* on the same plan does
+// not require the subscriber to re-approve, so in the common case this resolves immediately. If
+// PayPal's response DOES include an approve link (observed for some account/plan configurations),
+// that is returned so the caller can send the admin through one more approval step. This was not
+// verified against a live PayPal sandbox from here -- test the actual proration amount and whether
+// an approval step appears before relying on this in production.
+async function reviseSubscriptionQuantity(subId, planKey, seats) {
+    const planId = await ensurePlan(planKey);
+    const body = await api('POST', `/v1/billing/subscriptions/${encodeURIComponent(subId)}/revise`, {
+        plan_id: planId,
+        quantity: String(seats),
+    });
+    const approve = (body.links || []).find(l => l.rel === 'approve');
+    return { approveUrl: approve ? approve.href : null };
+}
+
+module.exports = { ensureTables, ensurePlan, createSubscription, cancelSubscription, getSubscription, reviseSubscriptionQuantity, verifyWebhook };

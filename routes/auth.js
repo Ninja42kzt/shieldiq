@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const { db } = require("../db");
 const crypto = require('crypto');
 const { generateOTP, sendVerificationEmail, sendOTPEmail } = require('../utils/email');
+const { verifySession } = require('../utils/session');
 
 // Register
 const VALID_DEPARTMENTS = ['general', 'it', 'hr', 'finance', 'operations', 'sales'];
@@ -15,11 +16,19 @@ const VALID_DEPARTMENTS = ['general', 'it', 'hr', 'finance', 'operations', 'sale
 // configured window (see DEVICE_TRUST_DAYS below).
 const DEVICE_TRUST_DAYS = 30;
 
+// Session length: short enough to limit how long a leaked token stays useful, long enough that
+// people aren't re-logging-in constantly. Configurable via env without a code change.
+const SESSION_TTL = process.env.JWT_EXPIRES_IN || '12h';
+
 function issueSession(user) {
     const token = jwt.sign(
-        { id: user.id, email: user.email, role: user.role },
+        // tokenVersion is checked against users.token_version on every authenticated request
+        // (see server.js / admin.js / billing.js / itScan.js). Bumping that column -- done on
+        // password change/reset -- instantly invalidates every token issued before the bump,
+        // instead of leaving a stolen token valid until it naturally expires.
+        { id: user.id, email: user.email, role: user.role, tokenVersion: user.token_version || 0 },
         process.env.JWT_SECRET,
-        { expiresIn: '30d' }
+        { expiresIn: SESSION_TTL }
     );
     return {
         token,
@@ -67,95 +76,33 @@ async function ensureTrialIpTable() {
     trialIpTableReady = true;
 }
 
-router.post('/register', async (req, res) => {
-    const { name, company, email, password, role, plan, department } = req.body;
-
-    if (!name || !company || !email || !password) {
-        return res.status(400).json({ message: 'All fields are required' });
-    }
-
-    const isTrialSignup = plan === 'business_trial' || plan === 'enterprise_trial';
-    const clientIp = req.ip;
-    const trialIpAllowlist = (process.env.TRIAL_IP_ALLOWLIST || '').split(',').map(s => s.trim()).filter(Boolean);
-    const ipIsAllowlisted = trialIpAllowlist.includes(clientIp);
-    if (isTrialSignup && !ipIsAllowlisted) {
-        await ensureTrialIpTable();
-        const prior = await db.execute({ sql: 'SELECT 1 FROM trial_signup_ips WHERE ip = ?', args: [clientIp] });
-        if (prior.rows.length > 0) {
-            return res.status(400).json({ message: 'A free trial has already been started from this network.' });
-        }
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-        return res.status(400).json({ message: 'Invalid email address' });
-    }
-
-    if (password.length < 8) {
-        return res.status(400).json({ message: 'Password must be at least 8 characters' });
-    }
-
-    try {
-        const existing = await db.execute({
-            sql: 'SELECT id FROM users WHERE email = ?',
-            args: [email],
-        });
-        if (existing.rows.length > 0) {
-            return res.status(400).json({ message: 'Email already registered' });
-        }
-
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const userRole = role === 'admin' ? 'admin' : 'employee';
-        const userPlan = ['free', 'business_trial', 'enterprise_trial'].includes(plan) ? plan : 'free';
-        const userDepartment = VALID_DEPARTMENTS.includes(department) ? department : 'general';
-
-        let trialExpiry = null;
-        if (plan === 'business_trial' || plan === 'enterprise_trial') {
-            const d = new Date();
-            d.setDate(d.getDate() + 7);
-            trialExpiry = d.toISOString();
-        }
-
-        const insert = await db.execute({
-            sql: `INSERT INTO users (name, company, email, password, verified, role, department, plan, trial_expires_at)
-                  VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?)`,
-            args: [name, company, email, hashedPassword, userRole, userDepartment, userPlan, trialExpiry],
-        });
-        const userId = Number(insert.lastInsertRowid);
-
-        if (isTrialSignup && !ipIsAllowlisted) {
-            await db.execute({
-                sql: 'INSERT OR IGNORE INTO trial_signup_ips (ip, user_id, plan) VALUES (?, ?, ?)',
-                args: [clientIp, userId, userPlan],
-            });
-        }
-        // Short-lived, scoped only to let the frontend kick off PayPal approval right after signup.
-        const signupToken = jwt.sign({ id: userId, email, role: userRole }, process.env.JWT_SECRET, { expiresIn: '15m' });
-
-        const otp = generateOTP();
-        const expires = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-        await db.execute({
-            sql: 'INSERT INTO otps (email, otp, purpose, expires_at) VALUES (?, ?, ?, ?)',
-            args: [email, otp, 'verify', expires],
-        });
-
-        try {
-            await sendVerificationEmail(email, name, otp);
-        } catch (emailErr) {
-            console.error('Email send failed (non-blocking):', emailErr.message);
-        }
-
-        res.status(201).json({
-            message: 'Account created! Check your email for your verification code.',
-            requiresVerification: true,
-            email,
-            signupToken,
-        });
-
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Server error' });
-    }
+// POST /api/auth/register -- DISABLED (security fix, see chat notes).
+//
+// This endpoint used to trust a client-supplied `role` field verbatim:
+//     const userRole = role === 'admin' ? 'admin' : 'employee';
+// Anyone could POST { role: 'admin', company: '<any existing company name>', ... } directly
+// to this endpoint (no login page even needed) and receive a working admin JWT -- full access
+// to /admin, the employee list, and billing for whatever company name they typed, bypassing
+// requireAdmin entirely. It also let a caller self-grant a business/enterprise trial via a
+// client-supplied `plan` field, with no PayPal subscription ever created, and bound an
+// arbitrary free-text `company` string with no domain or invite check, letting an outsider
+// attach themselves to a real company's data (headcount, stats, leaderboard).
+//
+// The only page that ever called this was public/register.html, which is not linked from any
+// current nav (every "Register"/"Get Started" link points at /register, which 301-redirects to
+// /register-individual) -- it's dead UI, not a feature in current use. That page has been
+// removed. Account creation now only happens via:
+//   - /register-company      (new company admin; role is hardcoded 'admin' server-side, and a
+//                              non-public email domain can only be claimed by one company)
+//   - /register-individual   (solo learner; role hardcoded 'admin' for their own billing, but
+//                              with no company/team, so admin.js's /employees route refuses them)
+//   - POST /api/admin/employees (existing admin invites a teammate; role is hardcoded
+//                              'employee' there and can't be changed by the request body)
+// If self-serve "join my company as an employee" signup (without an admin invite) is wanted
+// back, it needs rebuilding with the company bound to the verified email domain -- never to a
+// client-supplied role or free-text company name.
+router.post('/register', (req, res) => {
+    res.status(410).json({ message: 'This signup method is no longer available. Use /register-company, /register-individual, or ask your admin to add you.' });
 });
 
 // Verify email
@@ -299,11 +246,16 @@ router.post('/change-password', async (req, res) => {
 
         const hashed = await bcrypt.hash(newPassword, 10);
         await db.execute({
-            sql: 'UPDATE users SET password = ? WHERE id = ?',
+            sql: 'UPDATE users SET password = ?, token_version = token_version + 1 WHERE id = ?',
             args: [hashed, decoded.id],
         });
 
-        res.json({ message: 'Password changed successfully' });
+        // Bumping token_version invalidates every token issued before this moment, including
+        // the one that was just used to call this endpoint -- so hand back a fresh one for
+        // *this* device/session rather than silently logging the user out of their own request.
+        const refreshed = (await db.execute({ sql: 'SELECT * FROM users WHERE id = ?', args: [decoded.id] })).rows[0];
+        const session = issueSession(refreshed);
+        res.json({ message: 'Password changed successfully. You have been logged out of any other sessions.', token: session.token, user: session.user });
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Server error' });
@@ -362,8 +314,11 @@ router.post('/reset-password', async (req, res) => {
 
         await db.execute({ sql: 'UPDATE otps SET used = 1 WHERE id = ?', args: [record.id] });
         const hashed = await bcrypt.hash(newPassword, 10);
+        // Also bumps token_version: if an attacker had a stolen session token for this account,
+        // a password reset (which is often done *because* the account was compromised) now
+        // invalidates it immediately instead of leaving it valid until it naturally expires.
         await db.execute({
-            sql: 'UPDATE users SET password = ? WHERE email = ?',
+            sql: 'UPDATE users SET password = ?, token_version = token_version + 1 WHERE email = ?',
             args: [hashed, email],
         });
 
@@ -403,12 +358,7 @@ router.post('/enable-2fa', async (req, res) => {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) return res.status(401).json({ message: 'Unauthorized' });
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const result = await db.execute({
-            sql: 'SELECT * FROM users WHERE id = ?',
-            args: [decoded.id],
-        });
-        const user = result.rows[0];
+        const { user } = await verifySession(token);
 
         const otp = generateOTP();
         const expires = new Date(Date.now() + 10 * 60 * 1000).toISOString();
@@ -420,6 +370,7 @@ router.post('/enable-2fa', async (req, res) => {
 
         res.json({ message: 'Confirmation code sent to your email. Enter it to activate 2FA.' });
     } catch (err) {
+        if (err.status) return res.status(err.status).json({ message: err.message });
         console.error(err);
         res.status(500).json({ message: 'Server error' });
     }
@@ -431,12 +382,7 @@ router.post('/confirm-2fa', async (req, res) => {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) return res.status(401).json({ message: 'Unauthorized' });
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const userResult = await db.execute({
-            sql: 'SELECT * FROM users WHERE id = ?',
-            args: [decoded.id],
-        });
-        const user = userResult.rows[0];
+        const { decoded, user } = await verifySession(token);
 
         const otpResult = await db.execute({
             sql: 'SELECT * FROM otps WHERE email = ? AND otp = ? AND purpose = ? AND used = 0 ORDER BY created_at DESC LIMIT 1',
@@ -453,6 +399,7 @@ router.post('/confirm-2fa', async (req, res) => {
 
         res.json({ message: '2FA enabled successfully! Your account is now more secure.' });
     } catch (err) {
+        if (err.status) return res.status(err.status).json({ message: err.message });
         console.error(err);
         res.status(500).json({ message: 'Server error' });
     }
@@ -463,10 +410,11 @@ router.post('/disable-2fa', async (req, res) => {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) return res.status(401).json({ message: 'Unauthorized' });
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const { decoded } = await verifySession(token);
         await db.execute({ sql: 'UPDATE users SET mfa_enabled = 0 WHERE id = ?', args: [decoded.id] });
         res.json({ message: '2FA disabled.' });
     } catch (err) {
+        if (err.status) return res.status(err.status).json({ message: err.message });
         console.error(err);
         res.status(500).json({ message: 'Server error' });
     }
@@ -533,7 +481,17 @@ router.post('/register-company', async (req, res) => {
             args: [email, otp, 'verify', expires],
         });
 
-        await sendVerificationEmail(email, adminName, otp);
+        // Bug found while testing the fixes above: this call wasn't wrapped, so a transient email
+        // provider hiccup (rate limit, timeout, outage) made the ENTIRE company signup fail with a
+        // 500 -- even though the user row above had already been committed. The admin would see
+        // "Server error" with no OTP ever sent, then get "Email already registered" on any retry,
+        // stuck with no way to verify or recreate the account. /register-individual already
+        // correctly treats this as non-blocking (see below); this matches that pattern.
+        try {
+            await sendVerificationEmail(email, adminName, otp);
+        } catch (emailErr) {
+            console.error('Email send failed (non-blocking):', emailErr.message);
+        }
 
         res.status(201).json({
             message: 'Company account created! Check your email for your verification code.',

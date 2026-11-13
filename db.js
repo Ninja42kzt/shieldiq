@@ -12,7 +12,7 @@ async function initDB() {
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
-            company TEXT NOT NULL,
+            company TEXT,
             email TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
             role TEXT DEFAULT 'employee',
@@ -21,6 +21,10 @@ async function initDB() {
             mfa_enabled INTEGER DEFAULT 0,
             plan TEXT DEFAULT 'free',
             trial_expires_at DATETIME,
+            company_domain TEXT,
+            invited_by_admin INTEGER DEFAULT 0,
+            trial_activated INTEGER DEFAULT 0,
+            token_version INTEGER DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
         CREATE TABLE IF NOT EXISTS quiz_results (
@@ -85,6 +89,17 @@ async function initDB() {
     const migrations = [
         "ALTER TABLE users ADD COLUMN department TEXT DEFAULT 'general'",
         "ALTER TABLE code_scans ADD COLUMN recommendations TEXT",
+        // These three are used by register-company, the admin "add employee" invite
+        // flow, and the invited-employee first-login trial activation (see routes/auth.js
+        // and routes/admin.js) but were previously missing from both the CREATE TABLE
+        // above and this list -- on a brand new database those routes would fail with
+        // "no such column". Added defensively so a fresh install isn't broken.
+        "ALTER TABLE users ADD COLUMN company_domain TEXT",
+        "ALTER TABLE users ADD COLUMN invited_by_admin INTEGER DEFAULT 0",
+        "ALTER TABLE users ADD COLUMN trial_activated INTEGER DEFAULT 0",
+        // Bumped on password change / reset so any JWT issued before that moment stops
+        // working immediately, instead of staying valid until it naturally expires.
+        "ALTER TABLE users ADD COLUMN token_version INTEGER DEFAULT 0",
     ];
     for (const sql of migrations) {
         try {

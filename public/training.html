@@ -87,6 +87,7 @@
         </div>
     </main>
 
+    <script src="js/nav.js"></script>
     <script>
 const token = localStorage.getItem('token');
 if (!token) window.location.href = '/login';
@@ -129,23 +130,27 @@ async function loadTraining() {
             return;
         }
 
+        // Lesson content is AI-generated (see ml/ai_quiz.js's training generator) from a prompt that
+        // includes live threat-feed text pulled from an external source -- treat it the same as any
+        // other untrusted text before dropping it into innerHTML. escapeHtml is applied first, then
+        // the \n -> <br><br> substitution runs on the now-safe, escaped string.
         let html = '';
         lessons.forEach((lesson, i) => {
             html += `
                 <div class="lesson-card">
-                    <div class="lesson-topic">Lesson ${i + 1} · ${lesson.topic}</div>
-                    <h2 class="lesson-title">${lesson.title}</h2>
-                    <div class="lesson-content">${lesson.content.replace(/\n/g, '<br><br>')}</div>
+                    <div class="lesson-topic">Lesson ${i + 1} · ${escapeHtml(lesson.topic)}</div>
+                    <h2 class="lesson-title">${escapeHtml(lesson.title)}</h2>
+                    <div class="lesson-content">${escapeHtml(lesson.content).replace(/\n/g, '<br><br>')}</div>
                     ${lesson.tips?.length ? `
                         <h4 style="margin-bottom:10px;font-size:14px">💡 Practical Tips</h4>
                         <ul class="tips-list">
-                            ${lesson.tips.map(t => `<li>✓ ${t}</li>`).join('')}
+                            ${lesson.tips.map(t => `<li>✓ ${escapeHtml(t)}</li>`).join('')}
                         </ul>
                     ` : ''}
                     ${lesson.redFlag ? `
                         <div class="red-flag">
                             <strong>🚩 Red Flag to Watch For:</strong>
-                            ${lesson.redFlag}
+                            ${escapeHtml(lesson.redFlag)}
                         </div>
                     ` : ''}
                 </div>
@@ -193,6 +198,5 @@ function closeSidebar() {
 
 loadTraining();
     </script>
-    <script src="js/nav.js"></script>
 </body>
 </html>

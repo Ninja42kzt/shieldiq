@@ -1,8 +1,8 @@
 const express = require('express');
-const jwt = require('jsonwebtoken');
 const { db } = require('../db');
 const { plans } = require('../config/plans');
 const paypal = require('../services/paypal');
+const { verifySession } = require('../utils/session');
 
 const router = express.Router();
 const TRIAL_PLANS = ['business_trial', 'enterprise_trial', 'individual_trial', 'individual_pro_trial'];
@@ -18,14 +18,23 @@ function safeReturn(path) {
     return (typeof path === 'string' && path.startsWith('/')) ? `${SITE}${path}` : undefined;
 }
 
-// One free trial per account, ever. Cancelling a trial must NOT make another one available.
-// "Used" = a trial expiry was ever recorded, OR any subscription row exists (starting a trial
-// creates one and cancelling only changes its status), OR the account is in trial_signup_ips.
+// One free trial per account, ever -- but only once it was actually *used*. "Used" = the trial's
+// PayPal subscription was approved at least once (even if it later lapsed), OR a real paid
+// subscription exists. A trial that was started and then abandoned before ever being approved at
+// PayPal (closed the tab, hit back, clicked PayPal's own "cancel and return") is NOT a used trial:
+// reconcileSubscriptions() below demotes that PENDING row to ABANDONED once it's been sitting
+// unapproved for 24h+ and releases the account back to 'free' so a genuine retry is possible.
+// Until that 24h mark passes, the trial still reads as "in progress" (not retriable) -- this is
+// deliberate, so someone can't loop start -> abandon -> start to keep minting fresh 7-day windows.
 async function hasUsedTrial(userId) {
     await ensureTrialIpTable();
+    try { await reconcileSubscriptions(userId); } catch (e) { console.error('reconcile (trial check) failed:', e.message); }
     const u = await db.execute({ sql: 'SELECT trial_expires_at FROM users WHERE id = ?', args: [userId] });
     if (u.rows[0] && u.rows[0].trial_expires_at) return true;
-    const s = await db.execute({ sql: 'SELECT 1 FROM subscriptions WHERE user_id = ? LIMIT 1', args: [userId] });
+    // Only a subscription that was actually approved (ACTIVE at some point) or paid counts as
+    // "used" -- one that never got past PENDING, or that reconciliation gave up on as ABANDONED,
+    // does not.
+    const s = await db.execute({ sql: "SELECT 1 FROM subscriptions WHERE user_id = ? AND status NOT IN ('PENDING','ABANDONED') LIMIT 1", args: [userId] });
     if (s.rows.length) return true;
     const ip = await db.execute({ sql: 'SELECT 1 FROM trial_signup_ips WHERE user_id = ? LIMIT 1', args: [userId] });
     return ip.rows.length > 0;
@@ -69,14 +78,12 @@ async function cancelAtPayPal(subId, reason) {
 
 async function auth(req, res, next) {
     const token = req.headers.authorization?.split(' ')[1];
-    if (!token) return res.status(401).json({ message: 'Unauthorized' });
     try {
-        const d = jwt.verify(token, process.env.JWT_SECRET);
-        const u = (await db.execute({ sql: 'SELECT id, name, email, role, plan, trial_expires_at FROM users WHERE id = ?', args: [d.id] })).rows[0];
-        if (!u) return res.status(401).json({ message: 'Invalid token' });
-        req.user = u;
+        const { user } = await verifySession(token);
+        req.user = user;
         next();
-    } catch {
+    } catch (err) {
+        if (err.status) return res.status(err.status).json({ message: err.message });
         res.status(401).json({ message: 'Invalid token' });
     }
 }
@@ -176,6 +183,60 @@ router.post('/start-trial-paypal', auth, requireAdmin, async (req, res) => {
     }
 });
 
+// Called by the frontend right when PayPal redirects back to cancelPath (i.e. the user clicked
+// PayPal's own "Cancel and return to merchant" instead of approving). This is the fast path for
+// the exact bug reported: start a trial, bail out of PayPal, come back -- and get told the trial
+// is already "used" even though nothing was ever approved or charged.
+//
+// Two safeguards keep this from becoming a way to mint unlimited fresh trials:
+//   1. Only releases a PENDING subscription created within the last RELEASE_WINDOW_MS. Past that,
+//      the account has already had meaningful trial access; release falls back to the slower,
+//      PayPal-verified 24h staleness check in reconcileSubscriptions (via hasUsedTrial), same as
+//      someone who simply closed the tab without ever hitting this endpoint.
+//   2. Re-checks the subscription's status directly with PayPal (never trusts the client's say-so)
+//      -- if it was actually approved in the meantime, this is a no-op and the trial stays granted.
+const RELEASE_WINDOW_MS = 30 * 60 * 1000; // 30 minutes
+router.post('/trial/abandon', auth, requireAdmin, async (req, res) => {
+    try {
+        const row = (await db.execute({
+            sql: "SELECT provider_sub_id, plan_key, created_at FROM subscriptions WHERE user_id = ? AND status = 'PENDING' ORDER BY id DESC LIMIT 1",
+            args: [req.user.id],
+        })).rows[0];
+        if (!row) return res.json({ released: false });
+
+        const createdAt = new Date(String(row.created_at).includes('T') ? row.created_at : String(row.created_at).replace(' ', 'T') + 'Z');
+        if (isNaN(createdAt) || Date.now() - createdAt > RELEASE_WINDOW_MS) {
+            return res.json({ released: false, message: 'Too much time has passed to cancel this way, but your trial is still yours to use.' });
+        }
+
+        let sub;
+        try {
+            sub = await paypal.getSubscription(row.provider_sub_id);
+        } catch (e) {
+            return res.json({ released: false });
+        }
+        if (sub.status === 'ACTIVE') {
+            // They actually did approve it (maybe just before this call fired) -- leave it alone.
+            return res.json({ released: false });
+        }
+
+        await db.execute({
+            sql: "UPDATE subscriptions SET status = 'ABANDONED', updated_at = CURRENT_TIMESTAMP WHERE provider_sub_id = ? AND status = 'PENDING'",
+            args: [row.provider_sub_id],
+        });
+        const trialPlanKey = `${row.plan_key}_trial`;
+        await db.execute({
+            sql: "UPDATE users SET plan = 'free', trial_expires_at = NULL WHERE id = ? AND plan = ?",
+            args: [req.user.id, trialPlanKey],
+        });
+        await db.execute({ sql: 'DELETE FROM trial_signup_ips WHERE user_id = ?', args: [req.user.id] });
+        res.json({ released: true });
+    } catch (e) {
+        console.error('trial/abandon failed:', e.message);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 // Start a PayPal subscription. The plan is only upgraded later, by the verified webhook.
 router.post('/paypal/subscribe', auth, requireAdmin, async (req, res) => {
     const planKey = req.body?.plan;
@@ -198,13 +259,41 @@ router.post('/paypal/subscribe', auth, requireAdmin, async (req, res) => {
         }
         const seats = Math.min(Math.max(requestedSeats, headcount, 1), cfg.maxSeats);
         await reconcileSubscriptions(req.user.id);
-        const activeRows = (await db.execute({ sql: "SELECT plan_key, seats FROM subscriptions WHERE user_id = ? AND status = 'ACTIVE'", args: [req.user.id] })).rows;
+        const activeRows = (await db.execute({ sql: "SELECT provider_sub_id, plan_key, seats FROM subscriptions WHERE user_id = ? AND status = 'ACTIVE'", args: [req.user.id] })).rows;
         // Same plan with a different seat count is allowed (that's how seats are added/removed).
-        if (activeRows.some(r => r.plan_key === planKey && Number(r.seats) === seats)) {
+        const samePlanRow = activeRows.find(r => r.plan_key === planKey);
+        if (samePlanRow && Number(samePlanRow.seats) === seats) {
             return res.status(400).json({ message: `You already have this plan with ${seats} seat${seats === 1 ? '' : 's'}.` });
         }
-        // Switching (upgrade or downgrade): a new PayPal subscription is created for the new plan, and the
-        // old one is cancelled only after the new one is approved and ACTIVE (see retireOtherSubscriptions).
+        // Pure seat change on the SAME plan tier (e.g. adding one employee): revise the quantity on
+        // the existing subscription in place rather than creating a whole new one and cancelling the
+        // old one. This keeps a single renewal date for the whole company -- a newly added seat is
+        // never billed on its own separate cycle -- and lets PayPal prorate just the seat difference
+        // for the rest of the current cycle instead of re-charging for seats already paid for this
+        // month. See services/paypal.js#reviseSubscriptionQuantity.
+        if (samePlanRow) {
+            try {
+                const revised = await paypal.reviseSubscriptionQuantity(samePlanRow.provider_sub_id, planKey, seats);
+                if (revised.approveUrl) {
+                    // Some account/plan configurations require one more approval step even for a
+                    // quantity-only revise. The seat count is updated locally once PayPal confirms it
+                    // (via the webhook or the next /status call's reconciliation), not here.
+                    return res.json({ approveUrl: revised.approveUrl, switching: false, seatRevision: true });
+                }
+                await db.execute({
+                    sql: "UPDATE subscriptions SET seats = ?, updated_at = CURRENT_TIMESTAMP WHERE provider_sub_id = ?",
+                    args: [seats, samePlanRow.provider_sub_id],
+                });
+                return res.json({ approveUrl: null, switching: false, seatRevision: true, seats });
+            } catch (e) {
+                console.error('seat revision failed, falling back to full re-subscribe:', e.message);
+                // Fall through to the full switch/re-subscribe path below as a last resort, so an admin
+                // can still get the seat added even if PayPal's revise call itself is unavailable.
+            }
+        }
+        // Switching (upgrade or downgrade to a DIFFERENT plan tier): a new PayPal subscription is
+        // created for the new plan, and the old one is cancelled only after the new one is approved
+        // and ACTIVE (see retireOtherSubscriptions).
         const switching = activeRows.length > 0;
         let startTime = null;
         if (!switching && TRIAL_PLANS.includes(req.user.plan) && req.user.trial_expires_at) {
@@ -303,11 +392,35 @@ async function reconcileSubscriptions(userId) {
         sql: "UPDATE subscriptions SET status = ?, updated_at=CURRENT_TIMESTAMP WHERE provider_sub_id = ? AND status = 'PENDING'",
         args: [status, id],
     });
+    // start-trial-paypal grants trial access (plan + trial_expires_at) up front, before PayPal
+    // approval, for a fast/frictionless start -- see the comment there. If that approval is then
+    // abandoned (closed the tab, hit back, clicked PayPal's own cancel link) and the PENDING row
+    // above ages past 24h into ABANDONED, that early grant needs releasing too, or the account
+    // stays stuck showing an "active" trial it never actually confirmed, AND hasUsedTrial() would
+    // otherwise treat this as a permanently burned trial. Only releases when the account's current
+    // plan is still exactly the trial variant of this row's plan_key, so an abandoned *paid*
+    // subscribe attempt (which never pre-grants anything) is correctly left alone.
+    const releaseIfAbandonedTrial = async (planKey) => {
+        const trialPlanKey = `${planKey}_trial`;
+        const u = (await db.execute({ sql: 'SELECT plan FROM users WHERE id = ?', args: [userId] })).rows[0];
+        if (u && u.plan === trialPlanKey) {
+            await db.execute({ sql: "UPDATE users SET plan = 'free', trial_expires_at = NULL WHERE id = ?", args: [userId] });
+            await db.execute({ sql: 'DELETE FROM trial_signup_ips WHERE user_id = ?', args: [userId] });
+        }
+    };
     for (const row of pend.rows) {
         try {
             const sub = await paypal.getSubscription(row.provider_sub_id);
-            if (['CANCELLED', 'EXPIRED', 'SUSPENDED'].includes(sub.status)) { await markStatus(row.provider_sub_id, sub.status); continue; }
-            if (sub.status !== 'ACTIVE' && isStale(row.created_at)) { await markStatus(row.provider_sub_id, 'ABANDONED'); continue; }
+            if (['CANCELLED', 'EXPIRED', 'SUSPENDED'].includes(sub.status)) {
+                await markStatus(row.provider_sub_id, sub.status);
+                await releaseIfAbandonedTrial(row.plan_key);
+                continue;
+            }
+            if (sub.status !== 'ACTIVE' && isStale(row.created_at)) {
+                await markStatus(row.provider_sub_id, 'ABANDONED');
+                await releaseIfAbandonedTrial(row.plan_key);
+                continue;
+            }
             if (sub.status === 'ACTIVE' && String(sub.custom_id) === String(userId) && plans[row.plan_key]) {
                 await db.execute({
                     sql: "UPDATE subscriptions SET status='ACTIVE', updated_at=CURRENT_TIMESTAMP WHERE provider_sub_id = ?",
@@ -320,7 +433,10 @@ async function reconcileSubscriptions(userId) {
         } catch (e) {
             console.error('reconcile failed:', e.message);
             if (/\(404\)/.test(e.message) && isStale(row.created_at)) {
-                try { await markStatus(row.provider_sub_id, 'ABANDONED'); } catch (e2) { /* ignore */ }
+                try {
+                    await markStatus(row.provider_sub_id, 'ABANDONED');
+                    await releaseIfAbandonedTrial(row.plan_key);
+                } catch (e2) { /* ignore */ }
             }
         }
     }
