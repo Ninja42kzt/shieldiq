@@ -88,4 +88,43 @@ async function sendReminderEmail(to, toName, adminName, adminEmail, companyName)
     }
 }
 
-module.exports = { generateOTP, sendVerificationEmail, sendOTPEmail, sendReminderEmail };
+// Admin "Invite Employee" flow (routes/admin.js POST /employees). This function was imported
+// and called there but never actually defined/exported here -- calling it threw
+// "sendInviteEmail is not a function" immediately, before ever reaching Resend. That error was
+// caught by the (correctly written) non-blocking try/catch around the call, so the employee row
+// still got created and the admin saw a success message -- but no email was ever even attempted,
+// which is why adding an employee silently never delivered an invite while sendReminderEmail
+// (which was properly defined) worked fine. otp is the same 'reset' -purpose code the invite route
+// already stores in the otps table, redeemed via the existing /forgot-password -> /reset-password
+// flow (POST /api/auth/reset-password) -- there's no separate "set your password" page.
+async function sendInviteEmail(to, name, otp, companyName) {
+    const { error } = await resend.emails.send({
+        from: FROM_ADDRESS,
+        to,
+        subject: `You've been invited to ${companyName || 'your company'}'s ShieldIQ account`,
+        html: `
+        <div style="font-family:sans-serif;max-width:500px;margin:0 auto;padding:32px;background:#0A0A0F;color:#fff;border-radius:16px">
+            <h1 style="color:#00D4FF">🛡️ ShieldIQ</h1>
+            <h2>Hi ${name},</h2>
+            <p style="color:#999">
+                You've been added to ${companyName ? `<strong style="color:#fff">${companyName}</strong>` : 'your company'}'s
+                ShieldIQ security awareness training. Use the code below to set your password and get started.
+            </p>
+            <div style="background:#111;border:1px solid #333;border-radius:12px;padding:24px;text-align:center;margin:24px 0">
+                <span style="font-size:40px;font-weight:800;letter-spacing:12px;color:#00D4FF">${otp}</span>
+            </div>
+            <p style="color:#999">
+                Go to the <strong style="color:#fff">Forgot Password</strong> page on ShieldIQ, enter this email
+                address, then enter this code to set your password. Expires in <strong style="color:#fff">10 minutes</strong>
+                -- if it's expired by the time you get here, just request a new code the same way.
+            </p>
+            <p style="color:#666;font-size:12px">If you weren't expecting this, you can ignore this email.</p>
+        </div>`
+    });
+
+    if (error) {
+        throw new Error(`Resend error: ${error.message || JSON.stringify(error)}`);
+    }
+}
+
+module.exports = { generateOTP, sendVerificationEmail, sendOTPEmail, sendReminderEmail, sendInviteEmail };
