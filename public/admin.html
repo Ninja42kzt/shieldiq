@@ -2,6 +2,26 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <!-- Auth gate, run as early and as synchronously as possible -- before anything below is
+         parsed or painted. This used to be the first line of js/admin.js, loaded via <script src>
+         near the bottom of <body>; by the time that ran, the browser had already rendered this
+         entire dashboard (sidebar, stat cards, "Invite Employee" button, etc.) onto the screen for
+         ANY logged-in user, admin or not, for the brief moment before the redirect fired. No real
+         data was ever exposed that way (the API behind it independently re-checks role from the
+         DB on every call and would 403), but a non-admin should never see this page's structure at
+         all, even for an instant. Moving the exact same check up here, before <body> even starts,
+         closes that window instead of just shortening it. The duplicate check inside admin.js is
+         now effectively unreachable for a non-admin (this one fires first) but is left in place as
+         a harmless second layer. -->
+    <script>
+        (function () {
+            if (!localStorage.getItem('token')) { location.replace('/login'); return; }
+            var userData = JSON.parse(localStorage.getItem('user') || '{}');
+            // A solo Individual account is role='admin' too (so it can share the billing/upgrade
+            // flow with company admins) but has no `company` -- this page is for managing a team.
+            if (userData.role !== 'admin' || !userData.company) { location.replace('/dashboard'); }
+        })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ShieldIQ - Admin Dashboard</title>
     <link rel="stylesheet" href="css/style.css">
