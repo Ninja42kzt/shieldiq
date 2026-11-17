@@ -22,6 +22,14 @@ app.use(helmet({
         directives: {
             defaultSrc: ["'self'"],
             scriptSrc: ["'self'", "'unsafe-inline'"],
+            // Helmet's own defaults set script-src-attr: 'none' even when scriptSrc above allows
+            // 'unsafe-inline' -- script-src-attr is a separate, more specific CSP directive that
+            // governs inline onclick="..."/onload="..." attributes, and overrides scriptSrc for
+            // them. This entire site is built on onclick="..." handlers (every button, every
+            // page), so leaving this at Helmet's default silently breaks every button site-wide
+            // with no visible error unless you check the console. Found and fixed by actually
+            // testing a page after adding Helmet, not just reasoning about the config.
+            scriptSrcAttr: ["'unsafe-inline'"],
             styleSrc: ["'self'", "'unsafe-inline'"],
             imgSrc: ["'self'", 'data:', 'https:'],
             connectSrc: ["'self'"],
